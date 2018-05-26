@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>XrmRegister.Deploy</id>
+    <version>1.0.1</version>
+    <title>XrmRegister</title>
+    <authors>Gaute Odin Alvestad</authors>
+    <owners>Gaute Odin Alvestad</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <licenseUrl>https://github.com/Alvestad/XrmRegister/blob/master/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/Alvestad/XrmRegister</projectUrl>
+    <description>Utility to deploy assemblies, webresources and report to the MSCRM platform</description>
+    <releaseNotes></releaseNotes>
+    <copyright>Copyright 2018</copyright>
+    <tags>CRM</tags>
+    <dependencies>
+      <dependency id="Microsoft.CrmSdk.CoreAssemblies" version="8.2.0.2" />
+      <dependency id="Microsoft.CrmSdk.Workflow" version="8.2.0.2" />
+      <dependency id="Microsoft.IdentityModel" version="6.1.7600.16394" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="bin\Debug\XrmRegister.dll" target="lib\net452\XrmRegister.dll" />
+    <file src="bin\Debug\XrmPackageFiles\PluginConfig.xsd" target="content\PluginConfig.xsd" />
+  </files>
+</package>
