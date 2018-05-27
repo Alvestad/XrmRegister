@@ -8,13 +8,14 @@ using XrmRegister;
 
 namespace $rootnamespace$
 {
-    public class $fileinputname$ : XrmBasePlugin
+    public class $fileinputname$ : XrmPlugin
     {
         public $fileinputname$() : base(null, null) { }
         public $fileinputname$(string unsecureConfig, string secureConfig) : base(unsecureConfig, secureConfig)
         {
+            
             base.TypeName = this.GetType().FullName;
-
+            //Note: Muliple steps with same stage, message and entityname is not supported whitin xrmplugin
             base.RegisteredSteps.Add(new PluginStep()
             {
                 Name = "$safeitemname$",
@@ -22,7 +23,7 @@ namespace $rootnamespace$
                 StepMode = StepMode.Synchronous,
                 Stage = StepStage.PostOperation,
                 MessageName = XrmMessages.Create,
-                Action = ExecutePluginContext,
+                ActionToInvoke = Execute,
                 EntityName = null,
                 FilteredAttributeMode = AttributeMode.Include,
                 FilteringAttributes = new string[]
@@ -34,15 +35,11 @@ namespace $rootnamespace$
             });
         }
 
-        public void ExecutePluginContext(IServiceProvider serviceProvider)
+        public void Execute(XrmPluginContext xrmPluginContext)
         {
             try
             {
-                using (var localContext = new CrmPluginContext(serviceProvider))
-                {
-
-                }
-
+                
             }
             catch (Exception e)
             {

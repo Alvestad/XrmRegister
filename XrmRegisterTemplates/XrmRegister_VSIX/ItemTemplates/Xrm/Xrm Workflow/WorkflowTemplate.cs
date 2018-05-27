@@ -10,7 +10,7 @@ using XrmRegister;
 
 namespace $rootnamespace$
 {
-    public class $fileinputname$ : XrmBaseWorkflow
+    public class $fileinputname$ : XrmWorkflow
     {
         //[Input("Account")]
         //[ReferenceTarget("account")]
@@ -31,7 +31,7 @@ namespace $rootnamespace$
             };
         }
 
-        protected override void ExecuteCrmWorkflowContext(CrmWorkflowContext context)
+        protected override void Execute(XrmWorkflowContext context)
         {
            
         }
