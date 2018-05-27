@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+   <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified">
+         <xs:element name="PluginConfig">
+               <xs:complexType>
+                     <xs:sequence maxOccurs="1">
+                           <xs:element name="Plugins">
+                                 <xs:complexType>
+                                       <xs:sequence maxOccurs="unbounded">
+                                             <xs:element name="Plugin">
+                                               <xs:complexType>
+                                                 <xs:attribute name="typeName" type="xs:string"></xs:attribute>
+                                                 <xs:attribute name="stepName" type="xs:string"></xs:attribute>
+                                                 <xs:attribute name="secureConfig" type="xs:string"></xs:attribute>
+                                                 <xs:attribute name="unsecureConfig" type="xs:string"></xs:attribute>
+                                               </xs:complexType>
+                                             </xs:element>
+                                       </xs:sequence>
+                                 </xs:complexType>
+                           </xs:element>
+                     </xs:sequence>
+               </xs:complexType>
+         </xs:element>
+   </xs:schema>

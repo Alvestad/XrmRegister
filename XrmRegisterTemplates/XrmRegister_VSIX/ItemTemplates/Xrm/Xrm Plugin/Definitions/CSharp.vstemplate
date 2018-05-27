@@ -1,0 +1,19 @@
+<VSTemplate Version="3.0.0" xmlns="http://schemas.microsoft.com/developer/vstemplate/2005" Type="Item">
+  <TemplateData>
+    <ProjectType>CSharp</ProjectType>
+    
+    <DefaultName>Plugin.cs</DefaultName>
+    <Name>Xrm Plugin</Name>
+    <Description>Long description here</Description>    
+    <Icon>icon.png</Icon>
+    <NumberOfParentCategoriesToRollUp>1</NumberOfParentCategoriesToRollUp>
+    <TemplateID>ce2c8c02-9076-445d-a9eb-9171fdbfb97d</TemplateID>
+    <SortOrder>1000</SortOrder>
+  </TemplateData>
+  <TemplateContent>
+    <References />
+    <ProjectItem TargetFileName="$fileinputname$.cs" ReplaceParameters="true">
+      PluginTemplate.cs
+    </ProjectItem>
+  </TemplateContent>
+</VSTemplate>

@@ -1,0 +1,19 @@
+<VSTemplate Version="3.0.0" xmlns="http://schemas.microsoft.com/developer/vstemplate/2005" Type="Item">
+  <TemplateData>
+    <ProjectType>CSharp</ProjectType>
+    
+    <DefaultName>Workflow.cs</DefaultName>
+    <Name>Xrm Workflow</Name>
+    <Description>Long description here</Description>    
+    <Icon>icon.png</Icon>
+    <NumberOfParentCategoriesToRollUp>1</NumberOfParentCategoriesToRollUp>
+    <TemplateID>cb08b7ca-5380-4ed1-8128-c21ad7bbf4ab</TemplateID>
+    <SortOrder>1000</SortOrder>
+  </TemplateData>
+  <TemplateContent>
+    <References />
+    <ProjectItem TargetFileName="$fileinputname$.cs" ReplaceParameters="true">
+      WorkflowTemplate.cs
+    </ProjectItem>
+  </TemplateContent>
+</VSTemplate>

@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TemplateReport>
+  <ItemTemplates>
+    <ItemTemplate Path="ItemTemplates\Xrm\Xrm Plugin\Definitions\CSharp.vstemplate" Name="Xrm Plugin" Description="Long description here" ProjectType="CSharp" ProjectSubType="" />
+    <ItemTemplate Path="ItemTemplates\Xrm\Xrm Workflow\Definitions\CSharp.vstemplate" Name="Xrm Workflow" Description="Long description here" ProjectType="CSharp" ProjectSubType="" />
+  </ItemTemplates>
+  <ProjectTemplates>
+    <ProjectTemplate Path="..\XrmRegisterDeployAssemblyTemplate\_Definitions\_project.vstemplate.xml" Name="Xrm Deploy (Assembly)" Description="To deploy Plugins or Workflows" ProjectType="CSharp" ProjectSubType="" />
+    <ProjectTemplate Path="..\XrmRegisterReportDeployTemplate\_Definitions\_project.vstemplate.xml" Name="Xrm Deploy (Report)" Description="Project description here" ProjectType="CSharp" ProjectSubType="" />
+    <ProjectTemplate Path="..\XrmRegisterWebDeployTemplate\_Definitions\_project.vstemplate.xml" Name="Xrm Deploy (Web)" Description="Project description here" ProjectType="CSharp" ProjectSubType="" />
+    <ProjectTemplate Path="..\XrmEarlyBoundTemplate\_Definitions\_project.vstemplate.xml" Name="Xrm Early-Bound" Description="Generates earlybound class from CRM" ProjectType="CSharp" ProjectSubType="" />
+    <ProjectTemplate Path="..\XrmRegisterPluginTemplate\_Definitions\_project.vstemplate.xml" Name="Xrm Plugin Project" Description="No description available" ProjectType="CSharp" ProjectSubType="" />
+    <ProjectTemplate Path="..\XrmWebresourceTemplate\_Definitions\_project.vstemplate.xml" Name="Xrm Webresource Project" Description="Project description here" ProjectType="CSharp" ProjectSubType="" />
+    <ProjectTemplate Path="..\XrmRegisterWorkflowTemplate\_Definitions\_project.vstemplate.xml" Name="Xrm Workflow Project" Description="No description available" ProjectType="CSharp" ProjectSubType="" />
+  </ProjectTemplates>
+  <Snippets />
+</TemplateReport>
