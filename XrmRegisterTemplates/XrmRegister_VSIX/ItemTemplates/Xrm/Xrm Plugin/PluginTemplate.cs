@@ -37,14 +37,7 @@ namespace $rootnamespace$
 
         public void Execute(XrmPluginContext xrmPluginContext)
         {
-            try
-            {
-                
-            }
-            catch (Exception e)
-            {
-                throw new InvalidPluginExecutionException(e.Message);
-            }
+
         }
     }
 }
