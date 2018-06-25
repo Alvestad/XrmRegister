@@ -31,7 +31,7 @@ namespace $rootnamespace$
             };
         }
 
-        protected override void Execute(XrmWorkflowContext context)
+        public override void Execute(XrmWorkflowContext context)
         {
            
         }
