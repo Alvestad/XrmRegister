@@ -326,7 +326,7 @@ namespace XrmRegister.Utility
             return files.Distinct().ToList();
         }
 
-        public static Tuple<string, string, int, string>[] GetFiles(string path, string searchPattern, string prefix, SearchOption searchOption)
+        public static Tuple<string, string, int, string>[] GetFiles(string path, string searchPattern, string prefix, SearchOption searchOption, Dictionary<string, string> spoofList)
         {
             var directories = Directory.GetDirectories(path);
             string[] searchPatterns = searchPattern.Split('|');
@@ -338,6 +338,8 @@ namespace XrmRegister.Utility
                     files.AddRange(System.IO.Directory.GetFiles(dir, sp, searchOption).Select(
                         x => new Tuple<string, string, int, string>(
                             x,
+                            spoofList.ContainsKey($"{prefix}_{x.Replace(Directory.GetCurrentDirectory(), string.Empty).Replace("\\", "/")}") ?
+                            spoofList[$"{prefix}_{x.Replace(Directory.GetCurrentDirectory(), string.Empty).Replace("\\", "/")}"] :
                             $"{prefix}_{x.Replace(Directory.GetCurrentDirectory(), string.Empty).Replace("\\", "/")}",
                             WebresourceType(x),
                             x.Replace($"{Directory.GetCurrentDirectory()}\\", string.Empty)

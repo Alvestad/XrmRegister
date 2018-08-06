@@ -333,11 +333,32 @@ namespace XrmRegister
         {
             RegisterWeb(assemblyName, connectionString, solutionName, new List<string>(), true, deleteMissing, promptForDelete, contentCompare, @namespace);
         }
+
+        public void RegisterWeb(string assemblyName, string connectionString, string solutionName, bool contentCompare, bool deleteMissing, bool promptForDelete, Dictionary<string, string> spoofList)
+        {
+            RegisterWeb(assemblyName, connectionString, solutionName, new List<string>(), true, deleteMissing, promptForDelete, contentCompare, spoofList, Guid.Empty);
+        }
+
+        public void RegisterWeb(string assemblyName, string connectionString, string solutionName, bool contentCompare, bool deleteMissing, bool promptForDelete, Dictionary<string, string> spoofList, Guid @namespace)
+        {
+            RegisterWeb(assemblyName, connectionString, solutionName, new List<string>(), true, deleteMissing, promptForDelete, contentCompare, spoofList, @namespace);
+        }
+
         public void RegisterWeb(string assemblyName, string connectionString, string solutionName, List<string> whiteList, bool iswhitelist, bool deleteMissing, bool promptForDelete, bool contentCompare)
         {
             RegisterWeb(assemblyName, connectionString, solutionName, whiteList, iswhitelist, deleteMissing, promptForDelete, contentCompare, Guid.Empty);
         }
+
         public void RegisterWeb(string assemblyName, string connectionString, string solutionName, List<string> whiteList, bool iswhitelist, bool deleteMissing, bool promptForDelete, bool contentCompare, Guid @namespace)
+        {
+            RegisterWeb(assemblyName, connectionString, solutionName, whiteList, iswhitelist, deleteMissing, promptForDelete, contentCompare, new Dictionary<string, string>(), Guid.Empty);
+        }
+
+        public void RegisterWeb(string assemblyName, string connectionString, string solutionName, List<string> whiteList, bool iswhitelist, bool deleteMissing, bool promptForDelete, bool contentCompare, Dictionary<string, string> spoofList)
+        {
+            RegisterWeb(assemblyName, connectionString, solutionName, whiteList, iswhitelist, deleteMissing, promptForDelete, contentCompare, spoofList, Guid.Empty);
+        }
+        public void RegisterWeb(string assemblyName, string connectionString, string solutionName, List<string> whiteList, bool iswhitelist, bool deleteMissing, bool promptForDelete, bool contentCompare, Dictionary<string, string> spoofList, Guid @namespace)
         {
             Log($"Begin to register");
             Log($"Assembly: {assemblyName}");
@@ -397,7 +418,7 @@ namespace XrmRegister
             Log($"Fetched webresources from CRM, count {webresources.Count}");
 
             var filetypes = "*.htm|*.html|*.js|*.png|*.gif|*.jpg|*.xml|*.xap|*.xsl|*.ico|*.css";
-            var files = Utility.Utility.GetFiles($"{Directory.GetCurrentDirectory()}", filetypes, prefix, System.IO.SearchOption.AllDirectories);
+            var files = Utility.Utility.GetFiles($"{Directory.GetCurrentDirectory()}", filetypes, prefix, System.IO.SearchOption.AllDirectories, spoofList);
             Log($"Fetched webresources from Project, count {files.Length}");
             var publishList = new List<Guid>();
 
@@ -440,6 +461,12 @@ namespace XrmRegister
                         if (toContinue1 || toContinue2)
                             continue;
                     }
+                }
+
+                var fileName = file.Item2;
+                if(spoofList.ContainsKey(fileName))
+                {
+                   fileName = spoofList[fileName];
                 }
                 var existingWebresource = webresources.Where(x => x.Name == file.Item2).FirstOrDefault();
                 var xmlbytes = Utility.Utility.GetBytesFromFile(file.Item1);
