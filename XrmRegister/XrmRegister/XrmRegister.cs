@@ -69,7 +69,7 @@ namespace XrmRegister
                 dnsNamespace = GuidUtility.DnsNamespace;
 
 
-            var client = Connection.Connection.ServiceByString(connectionString);
+            var client = Connection.CrmConnection.GetClientByConnectionString(connectionString);
             var context = new Microsoft.Xrm.Sdk.Client.OrganizationServiceContext(client);
 
             var solutionId = Utility.Utility.FoundSolution(solutionName, client);
@@ -369,7 +369,7 @@ namespace XrmRegister
             if (dnsNamespace == Guid.Empty)
                 dnsNamespace = GuidUtility.DnsNamespace;
 
-            var client = Connection.Connection.ServiceByString(connectionString);
+            var client = Connection.CrmConnection.GetClientByConnectionString(connectionString);
             var context = new Microsoft.Xrm.Sdk.Client.OrganizationServiceContext(client);
 
             string prefix = null;
@@ -584,7 +584,7 @@ namespace XrmRegister
             if (dnsNamespace == Guid.Empty)
                 dnsNamespace = GuidUtility.DnsNamespace;
 
-            var client = Connection.Connection.ServiceByString(connectionString);
+            var client = Connection.CrmConnection.GetClientByConnectionString(connectionString);
             var xrmMetaData = new XrmMetaData(client);
 
             var solutionId = Utility.Utility.FoundSolution(solutionName, client);
@@ -1059,7 +1059,7 @@ namespace XrmRegister
 
         public void GenerateMessagesStruct(string connectionString, string filePath)
         {
-            var client = Connection.Connection.ServiceByString(connectionString);
+            var client = Connection.CrmConnection.GetClientByConnectionString(connectionString);
             var xrmMetaData = new XrmMetaData(client);
 
             xrmMetaData.GenerateMessagesStruct(filePath);
