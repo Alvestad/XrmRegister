@@ -1,5 +1,6 @@
 ﻿using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Client;
+using Microsoft.Xrm.Sdk.Query;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -65,6 +66,30 @@ namespace XrmRegister
                 return null;
 
             return pluginExecutionContext.InputParameters["Target"] as T;
+        }
+
+        public static EntityReference GetTargetRef(this IPluginExecutionContext pluginExecutionContext)
+        {
+            if (pluginExecutionContext == null)
+                return null;
+            if (pluginExecutionContext.InputParameters == null)
+                return null;
+            if (!pluginExecutionContext.InputParameters.Contains("Target"))
+                return null;
+
+            return pluginExecutionContext.InputParameters["Target"] as EntityReference;
+        }
+
+        public static QueryExpression GetQuery(this IPluginExecutionContext pluginExecutionContext)
+        {
+            if (pluginExecutionContext == null)
+                return null;
+            if (pluginExecutionContext.InputParameters == null)
+                return null;
+            if (!pluginExecutionContext.InputParameters.Contains("Query"))
+                return null;
+
+            return pluginExecutionContext.InputParameters["Query"] as QueryExpression;
         }
 
         public static OrganizationServiceContext GetCrmContext(this IOrganizationService service)

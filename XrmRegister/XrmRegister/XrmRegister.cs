@@ -611,6 +611,8 @@ namespace XrmRegister
                 instanseConfig = XrmInstanceConfiguration.GetPluginTypesHiearki(shortAssemblyName, client);
             else if (assemblyConfig.AssemblyConfig.XrmAssemblyType == XrmAssemblyType.Workflow)
                 instanseConfig = XrmInstanceConfiguration.GetWorkflowTypes(shortAssemblyName, client);
+            else if (assemblyConfig.AssemblyConfig.XrmAssemblyType == XrmAssemblyType.DataProvider)
+                instanseConfig = XrmInstanceConfiguration.GetDataProviderTypes(shortAssemblyName, client);
 
             if (instanseConfig.AssemblyRef != null)
                 Log("Found assembly in CRM");
@@ -1054,6 +1056,20 @@ namespace XrmRegister
                     }
                 }
                 Log("Done!");
+            }
+            else if (assemblyConfig.AssemblyConfig.XrmAssemblyType == XrmAssemblyType.DataProvider)
+            {
+                var toRemoveDataProviderTypes = (from i in instanseConfig.DataProviderTypes
+                                                 join a in assemblyConfig.DataProviderTypes on
+                                                  new { Id1 = i.Name }
+                                                  equals
+                                                  new { Id1 = a.TypeName }
+                                                  into _a
+                                                  from a in _a.DefaultIfEmpty(null)
+                                                  where a == null
+                                                  select i).ToList();
+
+
             }
         }
 

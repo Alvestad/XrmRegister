@@ -14,6 +14,8 @@ namespace XrmRegister.Utility
 
         public Collection<XrmWorkflowTypeContainer> WorkflowTypes { get; set; } = new Collection<XrmWorkflowTypeContainer>();
 
+        public Collection<XrmDataProviderContainer> DataProviderTypes { get; set; } = new Collection<XrmDataProviderContainer>();
+
         public EntityReference AssemblyRef { get; set; }
         public Collection<XrmImageContainer> GetImages()
         {
@@ -53,6 +55,15 @@ namespace XrmRegister.Utility
             return GetWorkflowTypes(ass, service);
         }
 
+        public static XrmInstanceConfiguration GetDataProviderTypes(string assemblyName, IOrganizationService service)
+        {
+            var ass = GetAssembly(assemblyName, service);
+            if (ass == null)
+                return new XrmInstanceConfiguration();
+
+            return GetDataProviderTypes(ass, service);
+        }
+
         public static XrmInstanceConfiguration GetWorkflowTypes(EntityReference assemblyRef, IOrganizationService service)
         {
             var assemblyId = assemblyRef.Id;
@@ -66,7 +77,8 @@ namespace XrmRegister.Utility
             var ptdic = new Collection<XrmWorkflowTypeContainer>();
             foreach (var pt in plugintype)
             {
-                var workflowTypeContainer = new XrmWorkflowTypeContainer {
+                var workflowTypeContainer = new XrmWorkflowTypeContainer
+                {
                     Name = pt.GetAttributeValue<string>("typename"),
                     Id = pt.Id,
                     Group = pt.GetAttributeValue<string>("workflowactivitygroupname"),
@@ -90,6 +102,27 @@ namespace XrmRegister.Utility
                 assRef = ass.ToEntityReference();
 
             return assRef;
+        }
+
+        public static XrmInstanceConfiguration GetDataProviderTypes(EntityReference assemblyRef, IOrganizationService service)
+        {
+            var assemblyId = assemblyRef.Id;
+
+            var context = new Microsoft.Xrm.Sdk.Client.OrganizationServiceContext(service);
+            var plugintype = (from pt in context.CreateQuery("plugintype")
+                              where (Guid)pt["pluginassemblyid"] == assemblyId
+                              select pt).ToList();
+
+
+            var ptdic = new Collection<XrmDataProviderContainer>();
+
+            foreach (var pt in plugintype)
+            {
+                var providerTypeContainer = new XrmDataProviderContainer { Name = pt.GetAttributeValue<string>("typename"), Id = pt.Id };
+                ptdic.Add(providerTypeContainer);
+            }
+
+            return new XrmInstanceConfiguration { DataProviderTypes = ptdic, AssemblyRef = assemblyRef };
         }
         public static XrmInstanceConfiguration GetPluginTypesHiearki(EntityReference assemblyRef, IOrganizationService service)
         {
@@ -200,6 +233,12 @@ namespace XrmRegister.Utility
         public Guid Id { get; set; }
         public string Name { get; set; }
         public Collection<XrmStepContainer> Steps { get; set; } = new Collection<XrmStepContainer>();
+    }
+
+    public class XrmDataProviderContainer
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; }
     }
 
     public class XrmStepContainer

@@ -34,11 +34,14 @@ namespace XrmRegister.Utility
         public XrmAssemblyConfigItem AssemblyConfig { get; set; }
         public Collection<XrmPluginType> PluginTypes { get; set; }
         public Collection <XrmWorkflowType> WorkFlowTypes { get; set; }
+        public Collection<XrmDataProviderType> DataProviderTypes { get; set; }
+
         public static XrmAssemblyConfiguration GetConfiguration(Assembly assembly)
         {
             var config = new XrmAssemblyConfiguration();
             config.PluginTypes = new Collection<XrmPluginType>();
             config.WorkFlowTypes = new Collection<XrmWorkflowType>();
+            config.DataProviderTypes = new Collection<XrmDataProviderType>();
 
             foreach (var type in assembly.GetLoadableTypes())
             {
@@ -68,7 +71,7 @@ namespace XrmRegister.Utility
                         config.PluginTypes.Add(new XrmPluginType { Steps = plugin, TypeName = TypeNameValue });
                     }
                 }
-                else if(type.BaseType.Name == "XrmWorkflow")
+                else if (type.BaseType.Name == "XrmWorkflow")
                 {
                     Type _type = assembly.GetType("XrmRegister.XrmWorkflow");
                     object instanceOfMyType = Activator.CreateInstance(type);
@@ -77,15 +80,31 @@ namespace XrmRegister.Utility
                     IList<PropertyInfo> props = new List<PropertyInfo>(tt.GetProperties());
 
                     var WorkflowActivityConfig = props.Where(x => x.Name == "WorkflowActivityConfig").FirstOrDefault();
-                 
+
                     var EventCollectionValue = (string)WorkflowActivityConfig.GetValue(instanceOfMyType, null);
-                   
+
                     var json_ser = new System.Runtime.Serialization.Json.DataContractJsonSerializer(typeof(WorkflowActivity));
 
                     var ms = new MemoryStream(Encoding.UTF8.GetBytes(EventCollectionValue));
                     var workflow = json_ser.ReadObject(ms) as WorkflowActivity;
                     ms.Close();
                     config.WorkFlowTypes.Add(new XrmWorkflowType { Workflow = workflow });
+                }
+                else if (type.BaseType.Name == "XrmDataProvider" && type.IsInterface == false)
+                {
+                    Type _type = assembly.GetType("XrmRegister.XrmDataProvider");
+                    object instanceOfMyType = Activator.CreateInstance(type, new object[] { null, null });
+                    var tt = instanceOfMyType.GetType();
+
+                    IList<PropertyInfo> props = new List<PropertyInfo>(tt.GetProperties());
+
+                    var TypeNameProp = props.Where(x => x.Name == "TypeName").FirstOrDefault();
+                    var TypeNameValue = (string)TypeNameProp.GetValue(instanceOfMyType, null);
+
+                    if (!string.IsNullOrWhiteSpace(TypeNameValue))
+                    {
+                        config.DataProviderTypes.Add(new XrmDataProviderType { TypeName = TypeNameValue });
+                    }
                 }
                 else if (type.BaseType.Name == "XrmAssemblyConfig")
                 {
@@ -125,6 +144,11 @@ namespace XrmRegister.Utility
 
             return config;
         }
+    }
+
+    public class XrmDataProviderType
+    {
+        public string TypeName { get; set; }
     }
 
     public class XrmPluginType
