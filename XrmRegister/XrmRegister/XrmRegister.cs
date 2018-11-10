@@ -588,9 +588,11 @@ namespace XrmRegister
             var client = Connection.CrmConnection.GetClientByConnectionString(connectionString);
             var xrmMetaData = new XrmMetaData(client);
 
-            var solutionId = Utility.Utility.FoundSolution(solutionName, client);
+            //var solutionId = Utility.Utility.FoundSolution(solutionName, client);
 
-            if (solutionId.HasValue)
+            var solution = Utility.Utility.FindSolution(solutionName, client);
+
+            if (solution != null)
                 Log($"Found solution with name {solutionName}");
             else
                 Log("Did not find solution, using default solution");
@@ -686,7 +688,7 @@ namespace XrmRegister
                     client.Update(pa);
                 }
 
-                if (solutionId.HasValue)
+                if (solution != null)
                 {
                     AddSolutionComponentRequest addReq1 = new AddSolutionComponentRequest()
                     {
@@ -850,7 +852,7 @@ namespace XrmRegister
                     client.Update(pa);
                 }
 
-                if (solutionId.HasValue)
+                if (solution != null)
                 {
                     AddSolutionComponentRequest addReq1 = new AddSolutionComponentRequest()
                     {
@@ -985,7 +987,7 @@ namespace XrmRegister
                                 }
                             }
 
-                            if (solutionId.HasValue)
+                            if (solution != null)
                             {
                                 AddSolutionComponentRequest addReq1 = new AddSolutionComponentRequest()
                                 {
@@ -1060,6 +1062,10 @@ namespace XrmRegister
             }
             else if (assemblyConfig.AssemblyConfig.XrmAssemblyType == XrmAssemblyType.DataProvider)
             {
+
+                var languageCode = Utility.Utility.OrganizationCountryCode(client);
+
+
                 var toRemoveDataProviderTypes = (from i in instanseConfig.DataProviderTypes
                                                  join a in assemblyConfig.DataProviderTypes on
                                                   new { Id1 = i.Name }
@@ -1070,14 +1076,13 @@ namespace XrmRegister
                                                  where a == null
                                                  select i).ToList();
 
-                var prefix = "new_";
-                var languageCode = 1033;
+                var prefix = solution.PublisherPrefix;
 
                 foreach(var toRemoveDataProviderType in toRemoveDataProviderTypes)
                 {
                     var dataproviderName = (toRemoveDataProviderType.Name.Contains(".") ? toRemoveDataProviderType.Name.Substring(toRemoveDataProviderType.Name.LastIndexOf(".") + 1) : toRemoveDataProviderType.Name);
                     var dataSourceSchemaName = $"{dataproviderName}Source";
-                    var dataEntitySourceSchemaName = $"{prefix}{dataSourceSchemaName}";
+                    var dataEntitySourceSchemaName = $"{prefix}_{dataSourceSchemaName}";
                     var dataproviderSchemaName = $"{dataproviderName}Provider";
 
                     Log($"Removing data-provider ({dataproviderSchemaName}|{dataEntitySourceSchemaName})");
@@ -1137,7 +1142,7 @@ namespace XrmRegister
                     client.Update(pa);
                 }
 
-                if (solutionId.HasValue)
+                if (solution != null)
                 {
                     AddSolutionComponentRequest addReq1 = new AddSolutionComponentRequest()
                     {
@@ -1156,7 +1161,7 @@ namespace XrmRegister
                     var dataproviderName = (dataProviderType.TypeName.Contains(".") ? dataProviderType.TypeName.Substring(dataProviderType.TypeName.LastIndexOf(".") + 1) : dataProviderType.TypeName);
                     var dataSourceDisplayName = $"{dataproviderName} Source";
                     var dataSourceSchemaName = $"{dataproviderName}Source";
-                    var dataEntitySourceSchemaName = $"{prefix}{dataSourceSchemaName}";
+                    var dataEntitySourceSchemaName = $"{prefix}_{dataSourceSchemaName}";
 
                     var dataproviderDisplayName = $"{dataproviderName} Provider";
                     var dataproviderSchemaName = $"{dataproviderName}Provider";
@@ -1193,7 +1198,7 @@ namespace XrmRegister
                             HasActivities = false,
                             PrimaryAttribute = new StringAttributeMetadata
                             {
-                                SchemaName = $"{prefix}name",
+                                SchemaName = $"{prefix}_name",
                                 RequiredLevel = new AttributeRequiredLevelManagedProperty(AttributeRequiredLevel.None),
                                 MaxLength = 100,
                                 DisplayName = new Label("Name", languageCode),
@@ -1276,7 +1281,7 @@ namespace XrmRegister
                         entity.Attributes.Add("datasourcelogicalname", dataEntitySourceSchemaName.ToLower());
                         entity.Attributes.Add("retrieveplugin", ptype.Id);
                         entity.Attributes.Add("retrievemultipleplugin", ptype.Id);
-                        entity.Attributes.Add("solutionid", solutionId);
+                        entity.Attributes.Add("solutionid", solution.Id);
 
                         CreateRequest createRequest = new CreateRequest();
                         createRequest.Target = entity;

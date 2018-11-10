@@ -272,8 +272,39 @@ namespace XrmRegister.Utility
             if (sol != null)
                 return sol.Id;
             return null;
+        }
 
+        public static XrmSolution FindSolution(string uniqeName, IOrganizationService service)
+        {
+            if (string.IsNullOrWhiteSpace(uniqeName))
+                return null;
 
+            var context = new Microsoft.Xrm.Sdk.Client.OrganizationServiceContext(service);
+
+            var sol = (from s in context.CreateQuery("solution")
+                        join p in context.CreateQuery("publisher") on (Guid)s["publisherid"] equals (Guid)p["publisherid"]
+                        where (string)s["uniquename"] == uniqeName
+                        select new { s, p }).FirstOrDefault();
+
+            if (sol != null)
+                return new XrmSolution
+                {
+                    Id = sol.s.Id,
+                    UniqueName = sol.s.GetAttributeValue<string>("uniquename"),
+                    PublisherId = sol.p.GetAttributeValue<Guid>("publisherid"),
+                    PublisherName = sol.p.GetAttributeValue<string>("uniquename"),
+                    PublisherPrefix = sol.p.GetAttributeValue<string>("customizationprefix")
+                };
+            return null;
+        }
+
+        public static int OrganizationCountryCode(IOrganizationService service)
+        {
+            var context = new Microsoft.Xrm.Sdk.Client.OrganizationServiceContext(service);
+
+            var countryCode = (from o in context.CreateQuery("organization") select (int)o.Attributes["languagecode"]).FirstOrDefault();
+
+            return countryCode;
         }
 
         public static Guid? FoundSolution(string uniqeName, IOrganizationService service, out string publisherPrefix)

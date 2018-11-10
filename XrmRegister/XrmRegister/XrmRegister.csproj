@@ -79,6 +79,7 @@
     <Compile Include="Utility\XrmInstanceConfiguration.cs" />
     <Compile Include="Utility\XrmMetaData.cs" />
     <Compile Include="Utility\XrmReportConfig.cs" />
+    <Compile Include="Utility\XrmSolution.cs" />
     <Compile Include="XrmPackageFiles\XrmDataProviderContext.cs" />
     <Compile Include="XrmPackageFiles\XrmDataProvider.cs" />
     <Compile Include="XrmPackageFiles\XrmWorkflowContext.cs" />
