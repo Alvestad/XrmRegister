@@ -48,7 +48,16 @@ namespace XrmRegister
                     this.PluginExecutionContext.InitiatingUserId);
             }
         }
-        internal EntityReference Target
+
+        internal Entity Target
+        {
+            get
+            {
+                return this.PluginExecutionContext.GetTarget<Entity>();
+            }
+        }
+
+        internal EntityReference TargetRef
         {
             get
             {

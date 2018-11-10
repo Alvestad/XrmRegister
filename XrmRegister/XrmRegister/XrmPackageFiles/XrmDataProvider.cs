@@ -39,16 +39,35 @@ namespace XrmRegister
                     {
                         if (xrmDataProviderContext.PluginExecutionContext.MessageName.ToLowerInvariant() == XrmMessages.Retrieve.ToLowerInvariant())
                         {
-                            tracingService.Trace(string.Format(CultureInfo.InvariantCulture, "Entered {0}.{1}", this.TypeName, XrmMessages.Retrieve));
+                            tracingService.Trace(string.Format(CultureInfo.InvariantCulture, "Entered {0}.{1}()", this.TypeName, XrmMessages.Retrieve));
                             if (this.DataProvider.Retrieve_ActionToInvoke != null)
                                 this.DataProvider.Retrieve_ActionToInvoke.Invoke(xrmDataProviderContext);
                         }
                         if (xrmDataProviderContext.PluginExecutionContext.MessageName.ToLowerInvariant() == XrmMessages.RetrieveMultiple.ToLowerInvariant())
                         {
-                            tracingService.Trace(string.Format(CultureInfo.InvariantCulture, "Entered {0}.{1}", this.TypeName, XrmMessages.RetrieveMultiple));
+                            tracingService.Trace(string.Format(CultureInfo.InvariantCulture, "Entered {0}.{1}()", this.TypeName, XrmMessages.RetrieveMultiple));
                             if (this.DataProvider.RetrieveMultiple_ActionToInvoke != null)
                                 this.DataProvider.RetrieveMultiple_ActionToInvoke.Invoke(xrmDataProviderContext);
                         }
+                        if (xrmDataProviderContext.PluginExecutionContext.MessageName.ToLowerInvariant() == XrmMessages.Create.ToLowerInvariant())
+                        {
+                            tracingService.Trace(string.Format(CultureInfo.InvariantCulture, "Entered {0}.{1}()", this.TypeName, XrmMessages.Create));
+                            if (this.DataProvider.Create_ActionToInvoke != null)
+                                this.DataProvider.Create_ActionToInvoke.Invoke(xrmDataProviderContext);
+                        }
+                        if (xrmDataProviderContext.PluginExecutionContext.MessageName.ToLowerInvariant() == XrmMessages.Update.ToLowerInvariant())
+                        {
+                            tracingService.Trace(string.Format(CultureInfo.InvariantCulture, "Entered {0}.{1}()", this.TypeName, XrmMessages.Update));
+                            if (this.DataProvider.Update_ActionToInvoke != null)
+                                this.DataProvider.Update_ActionToInvoke.Invoke(xrmDataProviderContext);
+                        }
+                        if (xrmDataProviderContext.PluginExecutionContext.MessageName.ToLowerInvariant() == XrmMessages.Delete.ToLowerInvariant())
+                        {
+                            tracingService.Trace(string.Format(CultureInfo.InvariantCulture, "Entered {0}.{1}()", this.TypeName, XrmMessages.Delete));
+                            if (this.DataProvider.Delete_ActionToInvoke != null)
+                                this.DataProvider.Delete_ActionToInvoke.Invoke(xrmDataProviderContext);
+                        }
+
                     }
                 }
                 catch (Exception ex)
@@ -70,6 +89,9 @@ namespace XrmRegister
     {
         public Action<XrmDataProviderContext> Retrieve_ActionToInvoke { get; set; }
         public Action<XrmDataProviderContext> RetrieveMultiple_ActionToInvoke { get; set; }
+        public Action<XrmDataProviderContext> Create_ActionToInvoke { get; set; }
+        public Action<XrmDataProviderContext> Update_ActionToInvoke { get; set; }
+        public Action<XrmDataProviderContext> Delete_ActionToInvoke { get; set; }
     }
     #endregion
 }

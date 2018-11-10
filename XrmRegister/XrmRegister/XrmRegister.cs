@@ -1,6 +1,7 @@
 ﻿using Microsoft.Crm.Sdk.Messages;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Messages;
+using Microsoft.Xrm.Sdk.Metadata;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -1065,11 +1066,227 @@ namespace XrmRegister
                                                   equals
                                                   new { Id1 = a.TypeName }
                                                   into _a
-                                                  from a in _a.DefaultIfEmpty(null)
-                                                  where a == null
-                                                  select i).ToList();
+                                                 from a in _a.DefaultIfEmpty(null)
+                                                 where a == null
+                                                 select i).ToList();
+
+                var prefix = "new_";
+                var languageCode = 1033;
+
+                foreach(var toRemoveDataProviderType in toRemoveDataProviderTypes)
+                {
+                    var dataproviderName = (toRemoveDataProviderType.Name.Contains(".") ? toRemoveDataProviderType.Name.Substring(toRemoveDataProviderType.Name.LastIndexOf(".") + 1) : toRemoveDataProviderType.Name);
+                    var dataSourceSchemaName = $"{dataproviderName}Source";
+                    var dataEntitySourceSchemaName = $"{prefix}{dataSourceSchemaName}";
+                    var dataproviderSchemaName = $"{dataproviderName}Provider";
+
+                    Log($"Removing data-provider ({dataproviderSchemaName}|{dataEntitySourceSchemaName})");
+                    client.Delete("entitydataprovider", GuidUtility.Create(@namespace, dataproviderSchemaName));
+
+                    Log($"Removing entity (datasource) {dataEntitySourceSchemaName}");
+                    var deleteEntityRequest = new DeleteEntityRequest{ LogicalName = dataEntitySourceSchemaName.ToLower() };
+                    client.Execute(deleteEntityRequest);
+
+                    Log($"Removing missing plugintypes ({toRemoveDataProviderType.Name})");
+                    client.Delete("plugintype", toRemoveDataProviderType.Id);
+                        
+
+                    Log("Cleanup Done");
+                    Log("*");
+
+                }
+
+                //Register Assembly
+                var pa = new Entity("pluginassembly");
+
+                if (assemblyConfig.AssemblyConfig.SourceType == SourceType.Database)
+                {
+                    FileStream fs = new FileStream(assemblyName,
+                                       FileMode.Open,
+                                       FileAccess.Read);
+                    byte[] filebytes = new byte[fs.Length];
+                    fs.Read(filebytes, 0, Convert.ToInt32(fs.Length));
+                    string encodedData = Convert.ToBase64String(filebytes);
+                    pa.Attributes.Add("content", encodedData);
+                }
+                else if (assemblyConfig.AssemblyConfig.SourceType == SourceType.Disk)
+                {
+                    throw new NotImplementedException("Disk!");
+                }
+                else
+                {
+                    throw new Exception("No sourcetype defined!");
+                }
+
+                pa.Attributes.Add("sourcetype", new OptionSetValue((int)assemblyConfig.AssemblyConfig.SourceType));
+                pa.Attributes.Add("isolationmode", new OptionSetValue((int)assemblyConfig.AssemblyConfig.IsolationMode));
+                pa.Attributes.Add("version", ver.ToString());
+                pa.Attributes.Add("name", shortAssemblyName);
+
+                if (instanseConfig.AssemblyRef == null)
+                {
+                    Log("Creating assembly: " + assemblyName);
+                    pa.Id = GuidUtility.Create(dnsNamespace, assemblyName);
+                    pa.Id = client.Create(pa);
+                    instanseConfig.AssemblyRef = pa.ToEntityReference();
+                }
+                else
+                {
+                    Log("Updating assembly: " + assemblyName);
+                    pa.Id = instanseConfig.AssemblyRef.Id;
+                    client.Update(pa);
+                }
+
+                if (solutionId.HasValue)
+                {
+                    AddSolutionComponentRequest addReq1 = new AddSolutionComponentRequest()
+                    {
+                        ComponentType = 91,
+                        ComponentId = instanseConfig.AssemblyRef.Id,
+                        SolutionUniqueName = solutionName
+                    };
+                    Log("Add assembly to solution: " + solutionName);
+                    var result = client.Execute(addReq1);
+                }
 
 
+                foreach (var dataProviderType in assemblyConfig.DataProviderTypes)
+                {
+                    //Names
+                    var dataproviderName = (dataProviderType.TypeName.Contains(".") ? dataProviderType.TypeName.Substring(dataProviderType.TypeName.LastIndexOf(".") + 1) : dataProviderType.TypeName);
+                    var dataSourceDisplayName = $"{dataproviderName} Source";
+                    var dataSourceSchemaName = $"{dataproviderName}Source";
+                    var dataEntitySourceSchemaName = $"{prefix}{dataSourceSchemaName}";
+
+                    var dataproviderDisplayName = $"{dataproviderName} Provider";
+                    var dataproviderSchemaName = $"{dataproviderName}Provider";
+
+
+                    var existingDataProviderTypeContainer = instanseConfig.DataProviderTypes.Where(x => x.Name == dataProviderType.TypeName).FirstOrDefault(); // existingPlugintypes.Where(x => x.Name == typename).FirstOrDefault();
+
+                    var ptype = new Entity("plugintype");
+                    ptype.Attributes.Add("pluginassemblyid", pa.ToEntityReference());
+                    ptype.Attributes.Add("name", dataProviderType.TypeName);
+                    ptype.Attributes.Add("typename", dataProviderType.TypeName);
+
+                    if (existingDataProviderTypeContainer == null)
+                    {
+                        Log($"Creating plugintype {ptype.GetAttributeValue<string>("typename")}");
+                        ptype.Id = GuidUtility.Create(dnsNamespace, ptype.GetAttributeValue<string>("typename"));
+                        ptype.Attributes.Add("friendlyname", ptype.Id.ToString());
+                        ptype.Id = client.Create(ptype);
+                    }
+                    else
+                    {
+                        Log($"Skipping plugintype {ptype.GetAttributeValue<string>("typename")}");
+                        ptype.Id = existingDataProviderTypeContainer.Id;
+                        ptype.Attributes.Add("friendlyname", ptype.Id.ToString());
+                    }
+
+                    //Only create when new plugin, safe?
+                    if (existingDataProviderTypeContainer == null)
+                    {
+                        //Create data source entity
+                        Log($"Creating Entity (datasource) {dataEntitySourceSchemaName}");
+                        var createDataSourceEntityRequest = new CreateEntityRequest
+                        {
+                            HasActivities = false,
+                            PrimaryAttribute = new StringAttributeMetadata
+                            {
+                                SchemaName = $"{prefix}name",
+                                RequiredLevel = new AttributeRequiredLevelManagedProperty(AttributeRequiredLevel.None),
+                                MaxLength = 100,
+                                DisplayName = new Label("Name", languageCode),
+                                ExternalName = "Name"
+                            },
+                            Entity = new EntityMetadata
+                            {
+                                DataProviderId = new Guid("B2112A7E-B26C-42F7-9B63-9A809A9D716F"),
+                                IsActivity = false,
+                                SchemaName = dataEntitySourceSchemaName,
+                                DisplayName = new Label(dataSourceDisplayName, languageCode),
+                                DisplayCollectionName = new Label($"{dataSourceDisplayName}s", languageCode),
+                                ExternalCollectionName = $"{dataSourceSchemaName}s",
+                                ExternalName = dataSourceSchemaName,
+                                OwnershipType = OwnershipTypes.OrganizationOwned,
+                                IsAvailableOffline = false,
+                                Description = new Label(string.Empty, languageCode),
+                                IsBusinessProcessEnabled = false,
+                                IsVisibleInMobile = new BooleanManagedProperty(false),
+                                IsVisibleInMobileClient = new BooleanManagedProperty(false),
+                                IsReadOnlyInMobileClient = new BooleanManagedProperty(false),
+                                IsOfflineInMobileClient = new BooleanManagedProperty(false),
+                                IsAuditEnabled = new BooleanManagedProperty(false),
+                                IsSLAEnabled = false,
+                                IsBPFEntity = false,
+                                IsDuplicateDetectionEnabled = new BooleanManagedProperty(false),
+                                IsConnectionsEnabled = new BooleanManagedProperty(false),
+                                IsActivityParty = false,
+                                IsReadingPaneEnabled = false,
+                                IsQuickCreateEnabled = false,
+                                AutoCreateAccessTeams = false,
+                                CanCreateCharts = new BooleanManagedProperty(false),
+                                IsMailMergeEnabled = new BooleanManagedProperty(false),
+                                ChangeTrackingEnabled = false,
+                                CanChangeTrackingBeEnabled = new BooleanManagedProperty(false),
+                                IsEnabledForExternalChannels = false,
+                                EntityHelpUrlEnabled = false,
+                                IsCustomizable = new BooleanManagedProperty(true),
+                                IsRenameable = new BooleanManagedProperty(true),
+                                IsMappable = new BooleanManagedProperty(false),
+                                SyncToExternalSearchIndex = false,
+                                CanEnableSyncToExternalSearchIndex = new BooleanManagedProperty(false),
+                                CanModifyAdditionalSettings = new BooleanManagedProperty(false),
+                                CanChangeHierarchicalRelationship = new BooleanManagedProperty(false)
+                            }
+                        };
+
+                        createDataSourceEntityRequest.Parameters.Add("SolutionUniqueName", solutionName);
+                        var createDataSourceEntityResponse = (CreateEntityResponse)client.Execute(createDataSourceEntityRequest);
+
+                        //wtf! bug, ExternalName
+                        var retrieveAttributeRequest = new RetrieveAttributeRequest
+                        {
+                            EntityLogicalName = dataEntitySourceSchemaName.ToLowerInvariant(),
+                            LogicalName = $"{dataEntitySourceSchemaName.ToLowerInvariant()}id",
+                        };
+
+                        var retrieveAttributeResponse = (RetrieveAttributeResponse)client.Execute(retrieveAttributeRequest);
+                        var attributeMetadata = retrieveAttributeResponse.AttributeMetadata;
+                        attributeMetadata.ExternalName = dataSourceDisplayName;
+
+                        var updateAttributeRequest = new UpdateAttributeRequest
+                        {
+                            Attribute = attributeMetadata,
+                            EntityName = retrieveAttributeRequest.EntityLogicalName,
+                            MergeLabels = false
+                        };
+
+                        client.Execute(updateAttributeRequest);
+
+                        Log($"Publising Entity (datasource) {dataEntitySourceSchemaName}");
+                        var req = new PublishXmlRequest();
+                        req.ParameterXml = "<importexportxml><entities><entity>{" + createDataSourceEntityResponse.EntityId + "}</entity></entities></importexportxml>";
+                        var preq = (PublishXmlResponse)client.Execute(req);
+
+                        Log($"Creating data-provider ({dataproviderSchemaName}|{dataEntitySourceSchemaName})");
+                        Entity entity = new Entity("entitydataprovider");
+                        entity.Id = GuidUtility.Create(@namespace, dataproviderSchemaName);
+                        entity.Attributes.Add("name", dataproviderDisplayName);
+                        entity.Attributes.Add("datasourcelogicalname", dataEntitySourceSchemaName.ToLower());
+                        entity.Attributes.Add("retrieveplugin", ptype.Id);
+                        entity.Attributes.Add("retrievemultipleplugin", ptype.Id);
+                        entity.Attributes.Add("solutionid", solutionId);
+
+                        CreateRequest createRequest = new CreateRequest();
+                        createRequest.Target = entity;
+
+                        createRequest.Parameters.Add("SuppressDuplicateDetection", true);
+                        createRequest.Parameters.Add("SolutionUniqueName", solutionName);
+
+                        var createResponse = (CreateResponse)client.Execute(createRequest);
+                    }
+                }
             }
         }
 

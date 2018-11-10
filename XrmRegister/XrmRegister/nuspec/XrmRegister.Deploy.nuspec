@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>XrmRegister.Deploy</id>
-    <version>2.0.0</version>
+    <version>2.0.1-alpha</version>
     <title>XrmRegister</title>
     <authors>Gaute Odin Alvestad</authors>
     <owners>Gaute Odin Alvestad</owners>
@@ -10,7 +10,7 @@
     <licenseUrl>https://github.com/Alvestad/XrmRegister/blob/master/LICENSE</licenseUrl>
     <projectUrl>https://github.com/Alvestad/XrmRegister</projectUrl>
     <description>Utility to deploy assemblies, webresources and report to the MSCRM platform</description>
-    <releaseNotes>Added support for crm v9</releaseNotes>
+    <releaseNotes>Added support dataproviders</releaseNotes>
     <copyright>Copyright 2018</copyright>
     <tags>CRM</tags>
     <dependencies>

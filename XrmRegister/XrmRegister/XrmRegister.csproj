@@ -94,6 +94,7 @@
   <ItemGroup>
     <None Include="app.config" />
     <None Include="nuspec\XrmRegister.Deploy.nuspec" />
+    <None Include="nuspec\XrmRegister.DataProviderBase.nuspec" />
     <None Include="nuspec\XrmRegister.PluginBase.nuspec" />
     <None Include="nuspec\XrmRegister.WorkflowBase.nuspec" />
     <None Include="packages.config" />

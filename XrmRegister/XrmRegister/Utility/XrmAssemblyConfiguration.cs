@@ -149,6 +149,7 @@ namespace XrmRegister.Utility
     public class XrmDataProviderType
     {
         public string TypeName { get; set; }
+
     }
 
     public class XrmPluginType
