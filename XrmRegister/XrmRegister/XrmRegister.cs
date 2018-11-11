@@ -1281,9 +1281,10 @@ namespace XrmRegister
                         entity.Attributes.Add("datasourcelogicalname", dataEntitySourceSchemaName.ToLower());
                         entity.Attributes.Add("retrieveplugin", ptype.Id);
                         entity.Attributes.Add("retrievemultipleplugin", ptype.Id);
-                        entity.Attributes.Add("createplugin", ptype.Id);
-                        entity.Attributes.Add("updateplugin", ptype.Id);
-                        entity.Attributes.Add("deleteplugin", ptype.Id);
+                        //Not supported, yet?
+                        //entity.Attributes.Add("createplugin", ptype.Id);
+                        //entity.Attributes.Add("updateplugin", ptype.Id);
+                        //entity.Attributes.Add("deleteplugin", ptype.Id);
                         entity.Attributes.Add("solutionid", solution.Id);
 
                         CreateRequest createRequest = new CreateRequest();
