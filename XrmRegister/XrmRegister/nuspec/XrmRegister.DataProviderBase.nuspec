@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>XrmRegister.DataProviderBase</id>
-    <version>2.0.0-alpha</version>
+    <version>2.0.1-alpha</version>
     <title>XrmRegister.DataProviderBase</title>
     <authors>Gaute Odin Alvestad</authors>
     <owners>Gaute Odin Alvestad</owners>
@@ -21,8 +21,8 @@
   <files>
     <file src="bin\Debug\XrmRegister.dll" exclude="lib\net452\XrmRegister.dll" />
     <file src="XrmPackageFiles\XrmAssemblyConfig.cs" target="content\XrmBase\XrmAssemblyConfig.cs" />
-    <file src="XrmPackageFiles\XrmPlugin.cs" target="content\XrmBase\XrmDataProvider.cs" />
-    <file src="XrmPackageFiles\XrmPluginContext.cs" target="content\XrmBase\XrmDataProviderContext.cs" />
+    <file src="XrmPackageFiles\XrmDataProvider.cs" target="content\XrmBase\XrmDataProvider.cs" />
+    <file src="XrmPackageFiles\XrmDataProviderContext.cs" target="content\XrmBase\XrmDataProviderContext.cs" />
     <file src="XrmPackageFiles\XrmExtensions.cs" target="content\XrmBase\XrmExtensions.cs" />
     <file src="XrmPackageFiles\XrmMessages.cs" target="content\XrmBase\XrmMessages.cs" />
   </files>
