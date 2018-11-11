@@ -1188,7 +1188,7 @@ namespace XrmRegister
                         ptype.Attributes.Add("friendlyname", ptype.Id.ToString());
                     }
 
-                    //Only create when new plugin, safe?
+                    //Only create entitysource&dataprovier when new plugin, good enough?
                     if (existingDataProviderTypeContainer == null)
                     {
                         //Create data source entity
@@ -1281,6 +1281,9 @@ namespace XrmRegister
                         entity.Attributes.Add("datasourcelogicalname", dataEntitySourceSchemaName.ToLower());
                         entity.Attributes.Add("retrieveplugin", ptype.Id);
                         entity.Attributes.Add("retrievemultipleplugin", ptype.Id);
+                        entity.Attributes.Add("createplugin", ptype.Id);
+                        entity.Attributes.Add("updateplugin", ptype.Id);
+                        entity.Attributes.Add("deleteplugin", ptype.Id);
                         entity.Attributes.Add("solutionid", solution.Id);
 
                         CreateRequest createRequest = new CreateRequest();
