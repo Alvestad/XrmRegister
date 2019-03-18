@@ -1,13 +1,14 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="6f20ad773-82d5-4627-bcd4-76b0661a361" Version="1.0.0.8" Language="en-US" Publisher="Gaute Odin Alvestad" />
+        <Identity Id="6f20ad773-82d5-4627-bcd4-76b0661a361" Version="1.0.0.9" Language="en-US" Publisher="Gaute Odin Alvestad" />
         <DisplayName>XR_VSIX</DisplayName>
         <Description xml:space="preserve">Templates for the XrmRegister og XrmEarlyBound nuget packages</Description>
     </Metadata>
     <Installation>
         <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[14.0]" />
         <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[15.0]" />
+        <InstallationTarget Version="[15.0,16.0)" Id="Microsoft.VisualStudio.Community" />
     </Installation>
     <Dependencies>
         <Dependency Id="Microsoft.Framework.NDP" DisplayName="Microsoft .NET Framework" d:Source="Manual" Version="[4.5,)" />
