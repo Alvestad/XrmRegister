@@ -15,7 +15,7 @@ namespace $rootnamespace$
         {
             
             base.TypeName = this.GetType().FullName;
-            //Note: Muliple steps with same stage, message and entityname is not supported whitin xrmplugin
+            //Note: Muliple steps with same stage, message and entityname is not supported whitin the same xrmplugin class
             base.RegisteredSteps.Add(new PluginStep()
             {
                 Name = "$safeitemname$",

@@ -6,13 +6,13 @@
     <ProjectSubType>
     </ProjectSubType>
     <DefaultName>Plugins</DefaultName>
-    <SortOrder>1000</SortOrder>
+    <SortOrder>1002</SortOrder>
     <CreateNewFolder>true</CreateNewFolder>
     <ProvideDefaultName>true</ProvideDefaultName>
     <LocationField>Enabled</LocationField>
     <EnableLocationBrowseButton>true</EnableLocationBrowseButton>
     <Icon>sw-file-icon.png</Icon>
-    <TemplateID>$guid1$</TemplateID>
+    <TemplateID>93C9C27F-8046-449A-96B9-A8D45A965A46</TemplateID>
     <!-- Indicates how many parent folders this item template should appear in -->
     <NumberOfParentCategoriesToRollUp>1</NumberOfParentCategoriesToRollUp>
   </TemplateData>
