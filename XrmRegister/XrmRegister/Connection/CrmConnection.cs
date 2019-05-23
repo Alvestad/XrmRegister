@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net;
 using System.ServiceModel.Description;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace XrmRegister.Connection
@@ -20,10 +21,14 @@ namespace XrmRegister.Connection
         //}
         public static IOrganizationService GetClientByConnectionString(string connectionString)
         {
-            var _url = GetParameterInStringByName(connectionString, "url");
-            var _userName = GetParameterInStringByName(connectionString, "username");
-            var _password = GetParameterInStringByName(connectionString, "password");
-            var _domain = GetParameterInStringByName(connectionString, "domain");
+
+            var connectiontionvalues = Regex.Split(connectionString, @";(?=(?:[^']*'[^']*')*[^']*$)");
+
+            var _url = connectiontionvalues.GetParameter("url"); //GetParameterInStringByName(connectionString, "url");
+            var _userName = connectiontionvalues.GetParameter("username"); //GetParameterInStringByName(connectionString, "username");
+            var _password = connectiontionvalues.GetParameter("password"); //GetParameterInStringByName(connectionString, "password");
+            var _domain = connectiontionvalues.GetParameter("domain"); //GetParameterInStringByName(connectionString, "domain");
+
 
             var federation = false;
             if ((string.IsNullOrWhiteSpace(_domain) || _domain.ToLower() == "null") && !string.IsNullOrWhiteSpace(_userName) && !string.IsNullOrWhiteSpace(_password))
@@ -66,6 +71,16 @@ namespace XrmRegister.Connection
                 return null;
 
             var value = connectiontionvalues.Where(x => x.Trim().StartsWith(parameter + "=", StringComparison.InvariantCultureIgnoreCase)).First().Trim().Substring(parameter.Length + 1);
+            return value;
+        }
+
+        private static string GetParameter(this string[] values, string paramenterName)
+        {
+            var value = values.FirstOrDefault(x => x.Trim().StartsWith($"{paramenterName}=", StringComparison.InvariantCultureIgnoreCase))?.Trim().Substring(paramenterName.Length + 1);
+            if (value == null)
+                return null;
+            if (value.StartsWith("'") && value.EndsWith("'"))
+                value = value.Substring(1, value.Length - 2);
             return value;
         }
     }
