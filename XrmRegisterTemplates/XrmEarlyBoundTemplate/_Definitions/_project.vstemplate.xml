@@ -6,13 +6,13 @@
     <ProjectType>CSharp</ProjectType>
     <ProjectSubType>
     </ProjectSubType>
-    <SortOrder>1000</SortOrder>
+    <SortOrder>999</SortOrder>
     <CreateNewFolder>true</CreateNewFolder>
     <ProvideDefaultName>true</ProvideDefaultName>
     <LocationField>Enabled</LocationField>
     <EnableLocationBrowseButton>true</EnableLocationBrowseButton>
     <Icon>sw-file-icon.png</Icon>
-    <TemplateID>$guid1$</TemplateID>
+    <TemplateID>7A8C24FF-12C1-4ECA-A8A8-32A5D6476251</TemplateID>
     <!-- Indicates how many parent folders this item template should appear in -->
     <NumberOfParentCategoriesToRollUp>1</NumberOfParentCategoriesToRollUp>
   </TemplateData>
