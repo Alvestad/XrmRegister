@@ -23,7 +23,11 @@ namespace XrmRegister
 
             this.TracingService = (ITracingService)serviceProvider.GetService(typeof(ITracingService));
 
+            this.ServiceProvider = serviceProvider;
+
             IOrganizationServiceFactory factory = (IOrganizationServiceFactory)serviceProvider.GetService(typeof(IOrganizationServiceFactory));
+
+            this.ServiceFactory = factory;
 
             this.OrganizationService = factory.CreateOrganizationService(this.PluginExecutionContext.UserId);
         }
@@ -47,6 +51,12 @@ namespace XrmRegister
                     this.PluginExecutionContext.InitiatingUserId);
             }
         }
+
+        internal IOrganizationService OrganizationServiceImpersonate(Guid userId)
+        {
+            return this.ServiceFactory.CreateOrganizationService(userId);
+        }
+
         internal Entity Target
         {
             get

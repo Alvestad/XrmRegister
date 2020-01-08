@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>XrmRegister.PluginBase</id>
-    <version>1.0.3</version>
+    <version>1.0.4</version>
     <title>XrmRegister.PluginBase</title>
     <authors>Gaute Odin Alvestad</authors>
     <owners>Gaute Odin Alvestad</owners>
@@ -10,7 +10,7 @@
     <licenseUrl>https://github.com/Alvestad/XrmRegister/blob/master/LICENSE</licenseUrl>
     <projectUrl>https://github.com/Alvestad/XrmRegister</projectUrl>
     <description>Base plugin class and config to enable XrmRegister.Deploy to read the configuration of the assembly</description>
-    <releaseNotes></releaseNotes>
+    <releaseNotes>Added feature to impersonate in plugin context</releaseNotes>
     <copyright>Copyright 2018</copyright>
     <tags>CRM</tags>
     <dependencies>
