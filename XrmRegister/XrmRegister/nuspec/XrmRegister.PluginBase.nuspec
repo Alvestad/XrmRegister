@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>XrmRegister.PluginBase</id>
-    <version>1.0.4-alpha</version>
+    <version>1.0.4</version>
     <title>XrmRegister.PluginBase</title>
     <authors>Gaute Odin Alvestad</authors>
     <owners>Gaute Odin Alvestad</owners>
