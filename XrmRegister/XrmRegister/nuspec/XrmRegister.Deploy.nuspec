@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>XrmRegister.Deploy</id>
-    <version>2.0.1</version>
+    <version>3.0.1</version>
     <title>XrmRegister</title>
     <authors>Gaute Odin Alvestad</authors>
     <owners>Gaute Odin Alvestad</owners>
@@ -10,17 +10,15 @@
     <licenseUrl>https://github.com/Alvestad/XrmRegister/blob/master/LICENSE</licenseUrl>
     <projectUrl>https://github.com/Alvestad/XrmRegister</projectUrl>
     <description>Utility to deploy assemblies, webresources and report to the MSCRM platform</description>
-    <releaseNotes>Added support for crm v9</releaseNotes>
-    <copyright>Copyright 2018</copyright>
+    <releaseNotes>Added support for crm v9, update to support clientsecret and certificate authtype </releaseNotes>
+    <copyright>Copyright 2022</copyright>
     <tags>CRM</tags>
     <dependencies>
-      <dependency id="Microsoft.CrmSdk.CoreAssemblies" version="9.0.2.5" />
-      <dependency id="Microsoft.CrmSdk.Workflow" version="9.0.2.5" />
-      <dependency id="Microsoft.IdentityModel" version="6.1.7600.16394" />
+		<dependency id="Microsoft.CrmSdk.XrmTooling.CoreAssembly" version="9.1.1.1" />
     </dependencies>
   </metadata>
   <files>
-    <file src="bin\Debug\XrmRegister.dll" target="lib\net452\XrmRegister.dll" />
-    <file src="bin\Debug\XrmPackageFiles\PluginConfig.xsd" target="content\PluginConfig.xsd" />
+    <file src="..\bin\Debug\XrmRegister.dll" target="lib\net462\XrmRegister.dll" />
+    <file src="..\bin\Debug\XrmPackageFiles\PluginConfig.xsd" target="content\PluginConfig.xsd" />
   </files>
 </package>

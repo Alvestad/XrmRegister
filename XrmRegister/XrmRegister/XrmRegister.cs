@@ -584,7 +584,8 @@ namespace XrmRegister
             if (dnsNamespace == Guid.Empty)
                 dnsNamespace = GuidUtility.DnsNamespace;
 
-            var client = Connection.CrmConnection.GetClientByConnectionString(connectionString);
+            var client = Connection.CrmConnection.GetClientByConnectionString2(connectionString);
+
             var xrmMetaData = new XrmMetaData(client);
 
             var solutionId = Utility.Utility.FoundSolution(solutionName, client);

@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>XrmRegister.PluginBase</id>
-    <version>1.0.4</version>
+    <version>3.0.1</version>
     <title>XrmRegister.PluginBase</title>
     <authors>Gaute Odin Alvestad</authors>
     <owners>Gaute Odin Alvestad</owners>
@@ -11,19 +11,19 @@
     <projectUrl>https://github.com/Alvestad/XrmRegister</projectUrl>
     <description>Base plugin class and config to enable XrmRegister.Deploy to read the configuration of the assembly</description>
     <releaseNotes>Added feature to impersonate in plugin context</releaseNotes>
-    <copyright>Copyright 2018</copyright>
+    <copyright>Copyright 2022</copyright>
     <tags>CRM</tags>
     <dependencies>
-      <dependency id="Microsoft.CrmSdk.CoreAssemblies" version="8.2.0.2" />
+      <dependency id="Microsoft.CrmSdk.CoreAssemblies" version="9.0.2.45" />
       <dependency id="Microsoft.IdentityModel" version="6.1.7600.16394" />
     </dependencies>
   </metadata>
   <files>
-    <file src="bin\Debug\XrmRegister.dll" exclude="lib\net452\XrmRegister.dll" />
-    <file src="XrmPackageFiles\XrmAssemblyConfig.cs" target="content\XrmBase\XrmAssemblyConfig.cs" />
-    <file src="XrmPackageFiles\XrmPlugin.cs" target="content\XrmBase\XrmPlugin.cs" />
-    <file src="XrmPackageFiles\XrmPluginContext.cs" target="content\XrmBase\XrmPluginContext.cs" />
-    <file src="XrmPackageFiles\XrmExtensions.cs" target="content\XrmBase\XrmExtensions.cs" />
-    <file src="XrmPackageFiles\XrmMessages.cs" target="content\XrmBase\XrmMessages.cs" />
+    <file src="..\bin\Debug\XrmRegister.dll" exclude="lib\net462\XrmRegister.dll" />
+    <file src="..\XrmPackageFiles\XrmAssemblyConfig.cs" target="content\XrmBase\XrmAssemblyConfig.cs" />
+    <file src="..\XrmPackageFiles\XrmPlugin.cs" target="content\XrmBase\XrmPlugin.cs" />
+    <file src="..\XrmPackageFiles\XrmPluginContext.cs" target="content\XrmBase\XrmPluginContext.cs" />
+    <file src="..\XrmPackageFiles\XrmExtensions.cs" target="content\XrmBase\XrmExtensions.cs" />
+    <file src="..\XrmPackageFiles\XrmMessages.cs" target="content\XrmBase\XrmMessages.cs" />
   </files>
 </package>
