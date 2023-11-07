@@ -19,12 +19,12 @@
     </dependencies>
   </metadata>
   <files>
-    <file src="..\bin\Debug\XrmRegister.dll" exclude="lib\net462\XrmRegister.dll" />
-    <file src="..\XrmPackageFiles\XrmAssemblyConfig.cs" target="content\XrmBase\XrmAssemblyConfig.cs" />
-    <file src="..\XrmPackageFiles\XrmPlugin.cs" target="content\XrmBase\XrmPlugin.cs" />
-	<file src="..\XrmPackageFiles\XrmShared.cs" target="content\XrmBase\XrmShared.cs" />
-    <file src="..\XrmPackageFiles\XrmPluginContext.cs" target="content\XrmBase\XrmPluginContext.cs" />
-    <file src="..\XrmPackageFiles\XrmExtensions.cs" target="content\XrmBase\XrmExtensions.cs" />
-    <file src="..\XrmPackageFiles\XrmMessages.cs" target="content\XrmBase\XrmMessages.cs" />
+    <file src="bin\Debug\XrmRegister.dll" exclude="lib\net462\XrmRegister.dll" />
+    <file src="XrmPackageFiles\XrmAssemblyConfig.cs" target="content\XrmBase\XrmAssemblyConfig.cs" />
+    <file src="XrmPackageFiles\XrmPlugin.cs" target="content\XrmBase\XrmPlugin.cs" />
+	<file src="XrmPackageFiles\XrmShared.cs" target="content\XrmBase\XrmShared.cs" />
+    <file src="XrmPackageFiles\XrmPluginContext.cs" target="content\XrmBase\XrmPluginContext.cs" />
+    <file src="XrmPackageFiles\XrmExtensions.cs" target="content\XrmBase\XrmExtensions.cs" />
+    <file src="XrmPackageFiles\XrmMessages.cs" target="content\XrmBase\XrmMessages.cs" />
   </files>
 </package>

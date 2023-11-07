@@ -18,7 +18,7 @@
     </dependencies>
   </metadata>
   <files>
-    <file src="..\bin\Debug\XrmRegister.dll" target="lib\net462\XrmRegister.dll" />
-    <file src="..\bin\Debug\XrmPackageFiles\PluginConfig.xsd" target="content\PluginConfig.xsd" />
+    <file src="bin\Debug\XrmRegister.dll" target="lib\net462\XrmRegister.dll" />
+    <file src="bin\Debug\XrmPackageFiles\PluginConfig.xsd" target="content\PluginConfig.xsd" />
   </files>
 </package>
