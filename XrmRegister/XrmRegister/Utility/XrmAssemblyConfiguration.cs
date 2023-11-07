@@ -92,17 +92,30 @@ namespace XrmRegister.Utility
                 }
                 else if(type.BaseType.Name == "XrmWebHook" && type.IsInterface == false)
                 {
-                    Type _type = assembly.GetType("XrmRegister.WebHook");
-                    object instanceOfMyType = Activator.CreateInstance(type, new object[] { null, null });
+                    Type _type = assembly.GetType("XrmRegister.XrmWebHook");
+                    object instanceOfMyType = Activator.CreateInstance(type, new object[] {
+                       System.Configuration.ConfigurationManager.AppSettings[type.FullName]
+                    });
                     var tt = instanceOfMyType.GetType();
+
+                    //XrmWebHookType Test = (XrmWebHookType)Activator.CreateInstance(type, new object[] { });
 
                     IList<PropertyInfo> props = new List<PropertyInfo>(tt.GetProperties());
 
                     var EventCollectionProp = props.Where(x => x.Name == "WebHookStepCollection").FirstOrDefault();
                     var TypeNameProp = props.Where(x => x.Name == "TypeName").FirstOrDefault();
+                    var UrlProp = props.Where(x => x.Name == "Url").FirstOrDefault();
+                    var AuthProp = props.Where(x => x.Name == "Authentication").FirstOrDefault();
+                    var AuthCollectionProp = props.Where(x => x.Name == "AuthValuesCollection").FirstOrDefault();
+                    var WebhookKeyProp = props.Where(x => x.Name == "WebhookKeyValue").FirstOrDefault();
 
                     var EventCollectionValue = (string)EventCollectionProp.GetValue(instanceOfMyType, null);
                     var TypeNameValue = (string)TypeNameProp.GetValue(instanceOfMyType, null);
+                    var UrlValue = (string)UrlProp.GetValue(instanceOfMyType, null);
+                    var AuthType = (int)AuthProp.GetValue(instanceOfMyType, null);
+                    var AuthCollectionValues = (string)AuthCollectionProp.GetValue(instanceOfMyType, null);
+                    var WebhookKeyValue = (string)WebhookKeyProp.GetValue(instanceOfMyType, null);
+
 
                     if (!string.IsNullOrWhiteSpace(TypeNameValue))
                     {
@@ -110,9 +123,15 @@ namespace XrmRegister.Utility
                         var json_ser = new System.Runtime.Serialization.Json.DataContractJsonSerializer(typeof(Collection<WebHookStep>));
                         var ms = new MemoryStream(Encoding.UTF8.GetBytes(EventCollectionValue));
                         var webhook = json_ser.ReadObject(ms) as Collection<WebHookStep>;
+
+                        var json_ser_AuthValues = new System.Runtime.Serialization.Json.DataContractJsonSerializer(typeof(Collection<AuthValue>));
+                        var ms_Authvalues = new MemoryStream(Encoding.UTF8.GetBytes(AuthCollectionValues));
+                        var authvalues = json_ser_AuthValues.ReadObject(ms_Authvalues) as Collection<AuthValue>;
+
                         ms.Close();
-                        config.WebHookTypes.Add(new XrmWebHookType { Steps = webhook, TypeName = TypeNameValue });
+                        config.WebHookTypes.Add(new XrmWebHookType { Steps = webhook, TypeName = TypeNameValue, Url = UrlValue, AuthType = AuthType, AuthValues = authvalues, WebhookKeyValue = WebhookKeyValue });
                     }
+
                 }
                 else if(type.BaseType.Name == "XrmWorkflow")
                 {
@@ -169,6 +188,23 @@ namespace XrmRegister.Utility
                 }
             }
 
+            foreach (var webhookType in config.WebHookTypes)
+            {
+                for (int i = 0; i < webhookType.Steps.Count; i++)
+                {
+
+                    webhookType.Steps[i].TypeName = webhookType.TypeName;
+                    if (webhookType.Steps[i].Images != null)
+                    {
+                        for (int j = 0; j < webhookType.Steps[i].Images.Count; j++)
+                        {
+                            webhookType.Steps[i].Images[j].TypeName = webhookType.TypeName;
+                            webhookType.Steps[i].Images[j].PluginEventName = webhookType.Steps[i].Name;
+                        }
+                    }
+                }
+            }
+
             return config;
         }
     }
@@ -187,7 +223,12 @@ namespace XrmRegister.Utility
     public class XrmWebHookType
     {
         public string TypeName { get; set; }
+        public string Url { get; set; }
+        public int AuthType { get; set; }
+        public string WebhookKeyValue { get; set; }
         public Collection<WebHookStep> Steps { get; set; }
+        public Collection<AuthValue> AuthValues { get; set; }
+
     }
 
 }

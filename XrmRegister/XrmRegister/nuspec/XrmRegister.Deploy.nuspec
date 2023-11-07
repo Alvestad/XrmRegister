@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>XrmRegister.Deploy</id>
-    <version>3.0.1</version>
+    <version>3.0.2</version>
     <title>XrmRegister</title>
     <authors>Gaute Odin Alvestad</authors>
     <owners>Gaute Odin Alvestad</owners>

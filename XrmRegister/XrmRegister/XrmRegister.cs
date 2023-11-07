@@ -3,6 +3,7 @@ using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Messages;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -1087,7 +1088,7 @@ namespace XrmRegister
                                      join a in assemblyConfigSteps on
                                       new { Id1 = i.Name, Id3 = i.XrmPluginTypeName }
                                       equals
-                                      new { Id1 = a.Name, Id3 = a.Name }
+                                      new { Id1 = a.Name, Id3 = a.TypeName }
                                       into _a
                                      from a in _a.DefaultIfEmpty(null)
                                      where a == null
@@ -1124,69 +1125,15 @@ namespace XrmRegister
                     }
                 }
 
-                Log("Removing missing plugintypes");
+                Log("Removing missing webhooks");
                 foreach (var toRemovePluginType in toRemovePluginTypes)
                 {
-                    client.Delete("plugintype", toRemovePluginType.Id);
-                    Log($"Removed plugintype {toRemovePluginType.Name}");
+                    client.Delete("serviceendpoint", toRemovePluginType.Id);
+                    Log($"Removed webhooks {toRemovePluginType.Name}");
                 }
 
                 Log("Cleanup Done");
                 Log("*");
-
-                //Register Assembly
-                //var pa = new Entity("pluginassembly");
-
-                //if (assemblyConfig.AssemblyConfig.SourceType == SourceType.Database)
-                //{
-                //    FileStream fs = new FileStream(assemblyName,
-                //                       FileMode.Open,
-                //                       FileAccess.Read);
-                //    byte[] filebytes = new byte[fs.Length];
-                //    fs.Read(filebytes, 0, Convert.ToInt32(fs.Length));
-                //    string encodedData = Convert.ToBase64String(filebytes);
-                //    pa.Attributes.Add("content", encodedData);
-                //}
-                //else if (assemblyConfig.AssemblyConfig.SourceType == SourceType.Disk)
-                //{
-                //    throw new NotImplementedException("Disk!");
-                //}
-                //else
-                //{
-                //    throw new Exception("No sourcetype defined!");
-                //}
-
-                //pa.Attributes.Add("sourcetype", new OptionSetValue((int)assemblyConfig.AssemblyConfig.SourceType));
-                //pa.Attributes.Add("isolationmode", new OptionSetValue((int)assemblyConfig.AssemblyConfig.IsolationMode));
-                //pa.Attributes.Add("version", ver.ToString());
-                //pa.Attributes.Add("name", shortAssemblyName);
-
-                //if (instanseConfig.AssemblyRef == null)
-                //{
-                //    Log("Creating assembly: " + assemblyName);
-                //    pa.Id = GuidUtility.Create(dnsNamespace, assemblyName);
-                //    pa.Id = client.Create(pa);
-                //    instanseConfig.AssemblyRef = pa.ToEntityReference();
-                //}
-                //else
-                //{
-                //    Log("Updating assembly: " + assemblyName);
-                //    pa.Id = instanseConfig.AssemblyRef.Id;
-                //    client.Update(pa);
-                //}
-
-                if (solutionId.HasValue)
-                {
-                    AddSolutionComponentRequest addReq1 = new AddSolutionComponentRequest()
-                    {
-                        ComponentType = 91,
-                        ComponentId = instanseConfig.AssemblyRef.Id,
-                        SolutionUniqueName = solutionName
-                    };
-                    Log("Add assembly to solution: " + solutionName);
-                    var result = client.Execute(addReq1);
-                }
-
 
                 foreach (var webHookType in assemblyConfig.WebHookTypes)
                 {
@@ -1197,12 +1144,22 @@ namespace XrmRegister
                     //ptype.Attributes.Add("pluginassemblyid", pa.ToEntityReference());
                     sendpoint.Attributes.Add("contract", new OptionSetValue(8));
                     sendpoint.Attributes.Add("connectionmode", new OptionSetValue(1));
-                    sendpoint.Attributes.Add("authvalue", "");
-                    sendpoint.Attributes.Add("url", ""); //app.config replacement
+                    //sendpoint.Attributes.Add("authvalue", "");
+                    sendpoint.Attributes.Add("authtype", new OptionSetValue(webHookType.AuthType));
+                    sendpoint.Attributes.Add("url", webHookType.Url); //app.config replacement
+
+                    var authvalue = "";
+
+                    if (webHookType.AuthValues.Count > 0)
+                        authvalue = GenerateKeyValueXml(webHookType.AuthValues);
+                    else
+                        authvalue = webHookType.WebhookKeyValue;
+
+                   sendpoint.Attributes.Add("authvalue", authvalue);
 
                     if (existinWebHookTypeContainer == null)
                     {
-                        Log($"Creating webhook {sendpoint.GetAttributeValue<string>("name") }");
+                        Log($"Creating webhook {sendpoint.GetAttributeValue<string>("name")}");
                         sendpoint.Id = GuidUtility.Create(dnsNamespace, sendpoint.GetAttributeValue<string>("name"));
                        // ptype.Attributes.Add("friendlyname", ptype.Id.ToString());
                         sendpoint.Id = client.Create(sendpoint);
@@ -1214,6 +1171,18 @@ namespace XrmRegister
 
                         client.Update(sendpoint);
                         //ptype.Attributes.Add("friendlyname", ptype.Id.ToString());
+                    }
+
+                    if (solutionId.HasValue)
+                    {
+                        AddSolutionComponentRequest addReq1 = new AddSolutionComponentRequest()
+                        {
+                            ComponentType = 95,
+                            ComponentId = sendpoint.Id,
+                            SolutionUniqueName = solutionName
+                        };
+                        //Log("Adding step to solution: " + solutionName);
+                        var result = client.Execute(addReq1);
                     }
 
 
@@ -1242,7 +1211,7 @@ namespace XrmRegister
                             }
                         }
 
-                        var existingStepContainer = instanceConfigSteps.Where(x => x.Name == stp.Name && x.XrmPluginTypeName == stp.Name).FirstOrDefault();
+                        var existingStepContainer = instanceConfigSteps.Where(x => x.Name == stp.Name && x.XrmPluginTypeName == stp.TypeName).FirstOrDefault();
                         var _StepId = Guid.Empty;
 
                         if (Utility.Utility.Compare(stp, existingStepContainer, step.GetAttributeValue<string>("filteringattributes")))
@@ -1329,19 +1298,19 @@ namespace XrmRegister
 
                             if (!overrideUpdateImages && Utility.Utility.Compare(_image, existingImageContainer, image.GetAttributeValue<string>("attributes")))
                             {
-                                Log($"Skipping image {image.GetAttributeValue<string>("name")} ({stp.Name}|{sendpoint.GetAttributeValue<string>("typename")})");
+                                Log($"Skipping image {image.GetAttributeValue<string>("name")} ({stp.Name}|{stp.TypeName})");
                             }
                             else
                             {
                                 if (existingImageContainer == null)
                                 {
-                                    Log($"Creating image {image.GetAttributeValue<string>("name")} ({stp.Name}|{sendpoint.GetAttributeValue<string>("typename")})");
+                                    Log($"Creating image {image.GetAttributeValue<string>("name")} ({stp.Name}|{stp.TypeName})");
                                     image.Id = GuidUtility.Create(dnsNamespace, image.GetAttributeValue<string>("name") + stp.Name + sendpoint.GetAttributeValue<string>("typename"));
                                     image.Id = client.Create(image);
                                 }
                                 else
                                 {
-                                    Log($"Updating image {image.GetAttributeValue<string>("name")} ({stp.Name}|{sendpoint.GetAttributeValue<string>("typename")})");
+                                    Log($"Updating image {image.GetAttributeValue<string>("name")} ({stp.Name}|{stp.TypeName})");
                                     image.Id = existingImageContainer.Id;
                                     client.Update(image);
                                 }
@@ -1361,6 +1330,23 @@ namespace XrmRegister
             var xrmMetaData = new XrmMetaData(client);
 
             xrmMetaData.GenerateMessagesStruct(filePath);
+        }
+
+        private string GenerateKeyValueXml(Collection<AuthValue> values)
+        {
+            var settingStrings = string.Empty;
+
+            foreach (var keyvalue in values)
+            {
+                var key = keyvalue.Key; //row.Cells[0].Value?.ToString();
+                var value = keyvalue.Value; // row.Cells[1].Value?.ToString();
+
+                if (key == null && value == null) { continue; }
+
+                settingStrings += $"<setting name='{key}' value='{value}' />";
+            }
+
+            return settingStrings != string.Empty ? $@"<settings>{settingStrings}</settings>" : string.Empty;
         }
     }
 }

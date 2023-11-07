@@ -132,6 +132,7 @@
     <Compile Include="Utility\XrmInstanceConfiguration.cs" />
     <Compile Include="Utility\XrmMetaData.cs" />
     <Compile Include="Utility\XrmReportConfig.cs" />
+    <Compile Include="XrmPackageFiles\XrmShared.cs" />
     <Compile Include="XrmPackageFiles\XrmWebHook.cs" />
     <Compile Include="XrmPackageFiles\XrmWorkflowContext.cs" />
     <Compile Include="XrmPackageFiles\XrmPluginContext.cs" />
@@ -146,6 +147,7 @@
   <ItemGroup>
     <None Include="app.config" />
     <None Include="nuspec\XrmRegister.Deploy.nuspec" />
+    <None Include="nuspec\XrmRegister.WebhookBase.nuspec" />
     <None Include="nuspec\XrmRegister.PluginBase.nuspec" />
     <None Include="nuspec\XrmRegister.WorkflowBase.nuspec" />
     <None Include="packages.config" />

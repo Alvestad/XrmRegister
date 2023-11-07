@@ -22,4 +22,9 @@ namespace XrmRegister
     {
         public string TypeName { get; set; }
     }
+
+    public partial class WebHookStep
+    {
+        public string TypeName { get; set; }
+    }
 }

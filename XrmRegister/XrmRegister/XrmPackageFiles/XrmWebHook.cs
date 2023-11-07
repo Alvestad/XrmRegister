@@ -10,6 +10,11 @@ namespace XrmRegister
 {
     public class XrmWebHook
     {
+        internal XrmWebHook(string config)
+        {
+            this.Config = config;
+        }
+
         private Collection<WebHookStep> registeredSteps;
         protected Collection<WebHookStep> RegisteredSteps
         {
@@ -20,7 +25,24 @@ namespace XrmRegister
                 return this.registeredSteps;
             }
         }
+
+        private Collection<AuthValue> authValues;
+        protected Collection<AuthValue> AuthValues
+        {
+            get
+            {
+                if (this.authValues == null)
+                    this.authValues = new Collection<AuthValue>();
+                return this.authValues;
+            }
+        }
+
         public string TypeName { get; set; }
+        public string Url { get; set; }
+        public WebhookAuthentication Authentication { get; set; }
+        public string WebhookKeyValue { get; set; }
+        public string Config { get; private set; }
+
 
         public string WebHookStepCollection
         {
@@ -35,9 +57,39 @@ namespace XrmRegister
                 return sr.ReadToEnd();
             }
         }
+
+        public string AuthValuesCollection
+        {
+            get
+            {
+                var json_ser = new System.Runtime.Serialization.Json.DataContractJsonSerializer(typeof(Collection<AuthValue>));
+                var ms = new MemoryStream();
+                json_ser.WriteObject(ms, AuthValues);
+
+                ms.Position = 0;
+                StreamReader sr = new StreamReader(ms);
+                return sr.ReadToEnd();
+            }
+        }
     }
 
     #region WebHookStep
+
+    public enum WebhookAuthentication
+    {
+        HttpQueryString = 6,
+        Webhook = 4,
+        HttpHeader = 5
+    }
+
+    [System.Runtime.Serialization.DataContract]
+    public class AuthValue
+    {
+        [System.Runtime.Serialization.DataMember]
+        public string Key { get; set; }
+        [System.Runtime.Serialization.DataMember]
+        public string Value { get; set; }
+    }
 
     //public enum StepStage
     //{
@@ -110,7 +162,6 @@ namespace XrmRegister
         public string EntityName { get; set; }
         [System.Runtime.Serialization.DataMember]
         public string MessageName { get; set; }
-        public Action<XrmPluginContext> ActionToInvoke { get; set; }
         [System.Runtime.Serialization.DataMember]
         public string[] FilteringAttributes { get; set; }
         [System.Runtime.Serialization.DataMember]
