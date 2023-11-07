@@ -612,6 +612,8 @@ namespace XrmRegister
                 instanseConfig = XrmInstanceConfiguration.GetPluginTypesHiearki(shortAssemblyName, client);
             else if (assemblyConfig.AssemblyConfig.XrmAssemblyType == XrmAssemblyType.Workflow)
                 instanseConfig = XrmInstanceConfiguration.GetWorkflowTypes(shortAssemblyName, client);
+            else if (assemblyConfig.AssemblyConfig.XrmAssemblyType == XrmAssemblyType.Webhook)
+                instanseConfig = XrmInstanceConfiguration.GetWebHookTypesHiearki(shortAssemblyName, client);
 
             if (instanseConfig.AssemblyRef != null)
                 Log("Found assembly in CRM");
@@ -1056,6 +1058,301 @@ namespace XrmRegister
                 }
                 Log("Done!");
             }
+            else if (assemblyConfig.AssemblyConfig.XrmAssemblyType == XrmAssemblyType.Webhook)
+            {
+                //Delete Plugins/Steps/Images that no longer exist, beacuse can't update assembly if plugins have been removed
+                //Remove images on existing steps
+                //if (instanseConfig.AssemblyRef != null)
+                 Log("Removing missing Plugins/Steps/Images from Webhook");
+
+                var assemblyConfigImages = assemblyConfig.GetWebHookImages();
+                var instanceConfigImages = instanseConfig.GetWebhookImages();
+
+                var toRemoveImages = (from i in instanceConfigImages
+                                      join a in assemblyConfigImages on
+                                      new { Id1 = i.Name, Id2 = i.XrmStepContainerName, Id3 = i.XrmPluginTypeName }
+                                      equals
+                                      new { Id1 = a.Name, Id2 = a.PluginEventName, Id3 = a.TypeName }
+                                      into _a
+                                      from a in _a.DefaultIfEmpty(null)
+                                      where a == null
+                                      select i).ToList();
+
+
+                //Removed steps on existing pluginstypes
+                var assemblyConfigSteps = assemblyConfig.GetWebHookSteps();
+                var instanceConfigSteps = instanseConfig.GetWebhookSteps();
+
+                var toRemoveSteps = (from i in instanceConfigSteps
+                                     join a in assemblyConfigSteps on
+                                      new { Id1 = i.Name, Id3 = i.XrmPluginTypeName }
+                                      equals
+                                      new { Id1 = a.Name, Id3 = a.Name }
+                                      into _a
+                                     from a in _a.DefaultIfEmpty(null)
+                                     where a == null
+                                     select i).ToList();
+
+
+                var toRemovePluginTypes = (from i in instanseConfig.PluginTypes
+                                           join a in assemblyConfig.PluginTypes on
+                                            new { Id1 = i.Name }
+                                            equals
+                                            new { Id1 = a.TypeName }
+                                            into _a
+                                           from a in _a.DefaultIfEmpty(null)
+                                           where a == null
+                                           select i).ToList();
+
+
+                Log("Removing missing images");
+                foreach (var toRemoveImage in toRemoveImages)
+                {
+                    client.Delete("sdkmessageprocessingstepimage", toRemoveImage.Id);
+                    Log($"Removed image {toRemoveImage.Name} on step {toRemoveImage.XrmStepContainerName} on plugintype {toRemoveImage.XrmPluginTypeName}");
+                }
+
+                Log("Removing missing steps");
+                foreach (var toRemoveStep in toRemoveSteps)
+                {
+                    client.Delete("sdkmessageprocessingstep", toRemoveStep.Id);
+                    Log($"Removed step {toRemoveStep.Name} on plugintype {toRemoveStep.XrmPluginTypeName}");
+                    if (toRemoveStep.SecureConfigId.HasValue)
+                    {
+                        client.Delete("sdkmessageprocessingstepsecureconfig", toRemoveStep.SecureConfigId.Value);
+                        Log($"Removed secure config for step {toRemoveStep.Name} on plugintype {toRemoveStep.XrmPluginTypeName}");
+                    }
+                }
+
+                Log("Removing missing plugintypes");
+                foreach (var toRemovePluginType in toRemovePluginTypes)
+                {
+                    client.Delete("plugintype", toRemovePluginType.Id);
+                    Log($"Removed plugintype {toRemovePluginType.Name}");
+                }
+
+                Log("Cleanup Done");
+                Log("*");
+
+                //Register Assembly
+                //var pa = new Entity("pluginassembly");
+
+                //if (assemblyConfig.AssemblyConfig.SourceType == SourceType.Database)
+                //{
+                //    FileStream fs = new FileStream(assemblyName,
+                //                       FileMode.Open,
+                //                       FileAccess.Read);
+                //    byte[] filebytes = new byte[fs.Length];
+                //    fs.Read(filebytes, 0, Convert.ToInt32(fs.Length));
+                //    string encodedData = Convert.ToBase64String(filebytes);
+                //    pa.Attributes.Add("content", encodedData);
+                //}
+                //else if (assemblyConfig.AssemblyConfig.SourceType == SourceType.Disk)
+                //{
+                //    throw new NotImplementedException("Disk!");
+                //}
+                //else
+                //{
+                //    throw new Exception("No sourcetype defined!");
+                //}
+
+                //pa.Attributes.Add("sourcetype", new OptionSetValue((int)assemblyConfig.AssemblyConfig.SourceType));
+                //pa.Attributes.Add("isolationmode", new OptionSetValue((int)assemblyConfig.AssemblyConfig.IsolationMode));
+                //pa.Attributes.Add("version", ver.ToString());
+                //pa.Attributes.Add("name", shortAssemblyName);
+
+                //if (instanseConfig.AssemblyRef == null)
+                //{
+                //    Log("Creating assembly: " + assemblyName);
+                //    pa.Id = GuidUtility.Create(dnsNamespace, assemblyName);
+                //    pa.Id = client.Create(pa);
+                //    instanseConfig.AssemblyRef = pa.ToEntityReference();
+                //}
+                //else
+                //{
+                //    Log("Updating assembly: " + assemblyName);
+                //    pa.Id = instanseConfig.AssemblyRef.Id;
+                //    client.Update(pa);
+                //}
+
+                if (solutionId.HasValue)
+                {
+                    AddSolutionComponentRequest addReq1 = new AddSolutionComponentRequest()
+                    {
+                        ComponentType = 91,
+                        ComponentId = instanseConfig.AssemblyRef.Id,
+                        SolutionUniqueName = solutionName
+                    };
+                    Log("Add assembly to solution: " + solutionName);
+                    var result = client.Execute(addReq1);
+                }
+
+
+                foreach (var webHookType in assemblyConfig.WebHookTypes)
+                {
+                    var existinWebHookTypeContainer = instanseConfig.WebHookTypes.Where(x => x.Name == webHookType.TypeName).FirstOrDefault(); // existingPlugintypes.Where(x => x.Name == typename).FirstOrDefault();
+
+                    var sendpoint = new Entity("serviceendpoint");
+                    sendpoint.Attributes.Add("name", webHookType.TypeName);
+                    //ptype.Attributes.Add("pluginassemblyid", pa.ToEntityReference());
+                    sendpoint.Attributes.Add("contract", new OptionSetValue(8));
+                    sendpoint.Attributes.Add("connectionmode", new OptionSetValue(1));
+                    sendpoint.Attributes.Add("authvalue", "");
+                    sendpoint.Attributes.Add("url", ""); //app.config replacement
+
+                    if (existinWebHookTypeContainer == null)
+                    {
+                        Log($"Creating webhook {sendpoint.GetAttributeValue<string>("name") }");
+                        sendpoint.Id = GuidUtility.Create(dnsNamespace, sendpoint.GetAttributeValue<string>("name"));
+                       // ptype.Attributes.Add("friendlyname", ptype.Id.ToString());
+                        sendpoint.Id = client.Create(sendpoint);
+                    }
+                    else
+                    {
+                        Log($"Updating webhook { sendpoint.GetAttributeValue<string>("name")}");
+                        sendpoint.Id = existinWebHookTypeContainer.Id;
+
+                        client.Update(sendpoint);
+                        //ptype.Attributes.Add("friendlyname", ptype.Id.ToString());
+                    }
+
+
+                    foreach (var stp in webHookType.Steps)
+                    {
+                        var overrideUpdateImages = false;
+
+                        var step = new Entity("sdkmessageprocessingstep");
+                        step.Attributes.Add("asyncautodelete", false);
+                        step.Attributes.Add("stage", new Microsoft.Xrm.Sdk.OptionSetValue((int)stp.Stage));
+                        step.Attributes.Add("mode", new OptionSetValue((int)stp.StepMode));
+                        step.Attributes.Add("rank", stp.Rank);
+                        step.Attributes.Add("name", stp.Name);
+                        step.Attributes.Add("description", "");
+                        step.Attributes.Add("supporteddeployment", new OptionSetValue(0));  //new OptionSetValue((int)stp.SupportedDeployment);
+                        step.Attributes.Add("filteringattributes", null);
+
+                        if (stp.FilteringAttributes != null && stp.FilteringAttributes.Length != 0 && stp.MessageName == "Update")
+                        {
+                            if (stp.FilteredAttributeMode == AttributeMode.Include)
+                                step["filteringattributes"] = string.Join(",", stp.FilteringAttributes.Select(x => x.ToLower()));
+                            else
+                            {
+                                var entityAttributes = xrmMetaData.GetFilteringAttributeMetaDataForEntitiy(stp.EntityName);
+                                step["filteringattributes"] = string.Join(",", entityAttributes.Except(stp.FilteringAttributes.Select(x => x.ToLower())));
+                            }
+                        }
+
+                        var existingStepContainer = instanceConfigSteps.Where(x => x.Name == stp.Name && x.XrmPluginTypeName == stp.Name).FirstOrDefault();
+                        var _StepId = Guid.Empty;
+
+                        if (Utility.Utility.Compare(stp, existingStepContainer, step.GetAttributeValue<string>("filteringattributes")))
+                        {
+                            Log($"Skipping step {step.GetAttributeValue<string>("name")} ({sendpoint.GetAttributeValue<string>("name")})");
+                            _StepId = existingStepContainer.Id;
+                        }
+                        else
+                        {
+                            if (existingStepContainer != null)
+                            {
+                                if (stp.MessageName == "Create" && existingStepContainer.Message != "Create")
+                                    overrideUpdateImages = true;
+                                if (stp.MessageName != "Create" && existingStepContainer.Message == "Create")
+                                    overrideUpdateImages = true;
+                            }
+                          
+                           
+                            step.Attributes.Add("sdkmessageid", Utility.Utility.GetMessageId(stp.MessageName, client));
+                            step.Attributes.Add("sdkmessagefilterid", Utility.Utility.GetSdkMessageFilterId(stp.EntityName, step.GetAttributeValue<EntityReference>("sdkmessageid").Id, client));
+                            step.Attributes.Add("eventhandler", sendpoint.ToEntityReference());
+
+
+                            if (existingStepContainer == null)
+                            {
+                                Log($"Creating step {step.GetAttributeValue<string>("name")} ({sendpoint.GetAttributeValue<string>("name")})");
+                                _StepId = step.Id = GuidUtility.Create(dnsNamespace, sendpoint.GetAttributeValue<string>("typename") + step.GetAttributeValue<string>("name"));
+                                step.Id = client.Create(step);
+                            }
+                            else
+                            {
+                                Log($"Updating step {step.GetAttributeValue<string>("name")} ({sendpoint.GetAttributeValue<string>("name")})");
+                                _StepId = step.Id = existingStepContainer.Id;
+                                client.Update(step);
+                            }
+
+                            if (solutionId.HasValue)
+                            {
+                                AddSolutionComponentRequest addReq1 = new AddSolutionComponentRequest()
+                                {
+                                    ComponentType = 92,
+                                    ComponentId = step.Id,
+                                    SolutionUniqueName = solutionName
+                                };
+                                //Log("Adding step to solution: " + solutionName);
+                                var result = client.Execute(addReq1);
+                            }
+                        }
+
+                        foreach (var _image in stp.Images)
+                        {
+                            var image = new Entity("sdkmessageprocessingstepimage");
+
+                            image.Attributes.Add("imagetype", new OptionSetValue((int)_image.ImageType));
+                            image.Attributes.Add("name", _image.Name);
+                            image.Attributes.Add("entityalias", _image.Name);
+                            if (stp.MessageName == "Update" || stp.MessageName == "Delete")
+                                image.Attributes.Add("messagepropertyname", "Target");
+                            else if (stp.MessageName == "Create")
+                                image.Attributes.Add("messagepropertyname", "Id");
+                            image.Attributes.Add("sdkmessageprocessingstepid", new EntityReference("sdkmessageprocessingstep", _StepId)); // step.ToEntityReference();
+
+                            if (_image.Attributes != null && _image.Attributes.Length != 0)
+                            {
+                                if (_image.AttributeMode == AttributeMode.Include)
+                                    image.Attributes.Add("attributes", string.Join(",", _image.Attributes.Select(x => x.ToLower())));
+                                else
+                                {
+                                    var entityAttributes = xrmMetaData.GetFilteringAttributeMetaDataForEntitiy(stp.EntityName);
+                                    image.Attributes.Add("attributes", string.Join(",", entityAttributes.Except(stp.FilteringAttributes.Select(x => x.ToLower()))));
+                                }
+                            }
+                            else
+                            {
+                                image.Attributes.Add("attributes", null);
+                            }
+
+
+                            var existingImageContainer = instanceConfigImages.Where(x =>
+                            x.Name == _image.Name &&
+                            x.XrmPluginTypeName == _image.TypeName &&
+                            x.XrmStepContainerName == _image.PluginEventName
+                            ).FirstOrDefault();
+
+                            if (!overrideUpdateImages && Utility.Utility.Compare(_image, existingImageContainer, image.GetAttributeValue<string>("attributes")))
+                            {
+                                Log($"Skipping image {image.GetAttributeValue<string>("name")} ({stp.Name}|{sendpoint.GetAttributeValue<string>("typename")})");
+                            }
+                            else
+                            {
+                                if (existingImageContainer == null)
+                                {
+                                    Log($"Creating image {image.GetAttributeValue<string>("name")} ({stp.Name}|{sendpoint.GetAttributeValue<string>("typename")})");
+                                    image.Id = GuidUtility.Create(dnsNamespace, image.GetAttributeValue<string>("name") + stp.Name + sendpoint.GetAttributeValue<string>("typename"));
+                                    image.Id = client.Create(image);
+                                }
+                                else
+                                {
+                                    Log($"Updating image {image.GetAttributeValue<string>("name")} ({stp.Name}|{sendpoint.GetAttributeValue<string>("typename")})");
+                                    image.Id = existingImageContainer.Id;
+                                    client.Update(image);
+                                }
+                            }
+
+                        }
+                    }
+                }
+                Log("Done!");
+            }
+
         }
 
         public void GenerateMessagesStruct(string connectionString, string filePath)

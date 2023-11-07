@@ -132,6 +132,7 @@
     <Compile Include="Utility\XrmInstanceConfiguration.cs" />
     <Compile Include="Utility\XrmMetaData.cs" />
     <Compile Include="Utility\XrmReportConfig.cs" />
+    <Compile Include="XrmPackageFiles\XrmWebHook.cs" />
     <Compile Include="XrmPackageFiles\XrmWorkflowContext.cs" />
     <Compile Include="XrmPackageFiles\XrmPluginContext.cs" />
     <Compile Include="XrmRegister.cs" />

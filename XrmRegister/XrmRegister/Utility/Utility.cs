@@ -90,7 +90,7 @@ namespace XrmRegister.Utility
             return true;
         }
 
-            public static bool Compare(PluginStep step1, XrmStepContainer step2, string filteringAttributes, string unsecureconfig, string secureconfig)
+        public static bool Compare(PluginStep step1, XrmStepContainer step2, string filteringAttributes, string unsecureconfig, string secureconfig)
         {
             if (step2 == null)
                 return false;
@@ -151,6 +151,61 @@ namespace XrmRegister.Utility
 
             return true;
         }
+
+        public static bool Compare(WebHookStep step1, XrmStepContainer step2, string filteringAttributes)
+        {
+            if (step2 == null)
+                return false;
+
+            var name1 = step2.Entity;
+            var name2 = step1.EntityName;
+
+            if (string.IsNullOrWhiteSpace(name1))
+                name1 = string.Empty;
+            if (string.IsNullOrWhiteSpace(name2))
+                name2 = string.Empty;
+
+            if (name1 == "none")
+                name1 = string.Empty;
+            if (name2 == "none")
+                name2 = string.Empty;
+
+            if (name1 != name2)
+                return false;
+            if (step2.Message != step1.MessageName)
+                return false;
+            if (step2.Rank != step1.Rank)
+                return false;
+            if (step2.Mode != (int)step1.StepMode)
+                return false;
+            if (step2.Stage != (int)step1.Stage)
+                return false;
+
+
+            if (filteringAttributes != null && step2.FilteringAttributes == null)
+                return false;
+            if (filteringAttributes == null && step2.FilteringAttributes != null)
+                return false;
+
+            if (filteringAttributes != null && step2.FilteringAttributes != null)
+            {
+                var fa1 = filteringAttributes.Split(',').OrderBy(x => x).ToArray();
+                var fa2 = step2.FilteringAttributes.Split(',').OrderBy(x => x).ToArray();
+
+                if (fa1.Length != fa2.Length)
+                    return false;
+
+                for (int i = 0; i < fa1.Length; i++)
+                {
+                    if (fa1[i] != fa2[i])
+                        return false;
+                }
+            }
+
+            return true;
+        }
+
+
 
         public static EntityReference GetSdkMessageFilterId(string entityName, Guid messageId, IOrganizationService service)
         {
