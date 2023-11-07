@@ -1095,8 +1095,8 @@ namespace XrmRegister
                                      select i).ToList();
 
 
-                var toRemovePluginTypes = (from i in instanseConfig.PluginTypes
-                                           join a in assemblyConfig.PluginTypes on
+                var toRemoveWebhookTypes = (from i in instanseConfig.WebHookTypes
+                                           join a in assemblyConfig.WebHookTypes on
                                             new { Id1 = i.Name }
                                             equals
                                             new { Id1 = a.TypeName }
@@ -1126,10 +1126,10 @@ namespace XrmRegister
                 }
 
                 Log("Removing missing webhooks");
-                foreach (var toRemovePluginType in toRemovePluginTypes)
+                foreach (var toRemoveWebhookType in toRemoveWebhookTypes)
                 {
-                    client.Delete("serviceendpoint", toRemovePluginType.Id);
-                    Log($"Removed webhooks {toRemovePluginType.Name}");
+                    client.Delete("serviceendpoint", toRemoveWebhookType.Id);
+                    Log($"Removed webhooks {toRemoveWebhookType.Name}");
                 }
 
                 Log("Cleanup Done");
