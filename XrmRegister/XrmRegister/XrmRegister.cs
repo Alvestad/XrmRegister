@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using XrmRegister.Utility;
@@ -25,10 +26,15 @@ namespace XrmRegister
 
         }
 
-        private void Log(string message)
+        private void Log(string message, ConsoleColor color = ConsoleColor.White)
         {
+
             if (ShowMessage != null)
+            {
+                Console.ForegroundColor = color;
                 ShowMessage.Invoke(message);
+                Console.ForegroundColor = ConsoleColor.White;
+            }
         }
 
         public Tuple<string, string> GetSecureUnsecureConfiguration(string typeName, string stepName)
@@ -337,12 +343,12 @@ namespace XrmRegister
 
         public void RegisterWeb(string assemblyName, string connectionString, string solutionName, bool contentCompare, bool deleteMissing, bool promptForDelete, Dictionary<string, string> spoofList)
         {
-            RegisterWeb(assemblyName, connectionString, solutionName, new List<string>(), true, deleteMissing, promptForDelete, contentCompare, spoofList, Guid.Empty);
+            RegisterWeb(assemblyName, connectionString, solutionName, new List<string>(), true, deleteMissing, promptForDelete, contentCompare, spoofList, new List<string>(), false, Guid.Empty);
         }
 
         public void RegisterWeb(string assemblyName, string connectionString, string solutionName, bool contentCompare, bool deleteMissing, bool promptForDelete, Dictionary<string, string> spoofList, Guid @namespace)
         {
-            RegisterWeb(assemblyName, connectionString, solutionName, new List<string>(), true, deleteMissing, promptForDelete, contentCompare, spoofList, @namespace);
+            RegisterWeb(assemblyName, connectionString, solutionName, new List<string>(), true, deleteMissing, promptForDelete, contentCompare, spoofList, new List<string>(), false, @namespace);
         }
 
         public void RegisterWeb(string assemblyName, string connectionString, string solutionName, List<string> whiteList, bool iswhitelist, bool deleteMissing, bool promptForDelete, bool contentCompare)
@@ -352,15 +358,19 @@ namespace XrmRegister
 
         public void RegisterWeb(string assemblyName, string connectionString, string solutionName, List<string> whiteList, bool iswhitelist, bool deleteMissing, bool promptForDelete, bool contentCompare, Guid @namespace)
         {
-            RegisterWeb(assemblyName, connectionString, solutionName, whiteList, iswhitelist, deleteMissing, promptForDelete, contentCompare, new Dictionary<string, string>(), Guid.Empty);
+            RegisterWeb(assemblyName, connectionString, solutionName, whiteList, iswhitelist, deleteMissing, promptForDelete, contentCompare, new Dictionary<string, string>(), new List<string>(), false, Guid.Empty);
         }
 
         public void RegisterWeb(string assemblyName, string connectionString, string solutionName, List<string> whiteList, bool iswhitelist, bool deleteMissing, bool promptForDelete, bool contentCompare, Dictionary<string, string> spoofList)
         {
-            RegisterWeb(assemblyName, connectionString, solutionName, whiteList, iswhitelist, deleteMissing, promptForDelete, contentCompare, spoofList, Guid.Empty);
+            RegisterWeb(assemblyName, connectionString, solutionName, whiteList, iswhitelist, deleteMissing, promptForDelete, contentCompare, spoofList, new List<string>(), false, Guid.Empty); ;
         }
-        public void RegisterWeb(string assemblyName, string connectionString, string solutionName, List<string> whiteList, bool iswhitelist, bool deleteMissing, bool promptForDelete, bool contentCompare, Dictionary<string, string> spoofList, Guid @namespace)
+        public void RegisterWeb(string assemblyName, string connectionString, string solutionName, List<string> whiteList, bool iswhitelist, bool deleteMissing, bool promptForDelete, bool contentCompare, Dictionary<string, string> spoofList, List<string> scope, bool dryRun, Guid @namespace)
         {
+            if(dryRun)
+            {
+                Log("Dry Run");
+            }
             Log($"Begin to register");
             Log($"Assembly: {assemblyName}");
             Log($"Connection: {connectionString}");
@@ -418,7 +428,7 @@ namespace XrmRegister
 
             Log($"Fetched webresources from CRM, count {webresources.Count}");
 
-            var filetypes = "*.htm|*.html|*.js|*.png|*.gif|*.jpg|*.xml|*.xap|*.xsl|*.ico|*.css";
+            var filetypes = "*.htm|*.html|*.js|*.png|*.gif|*.jpg|*.xml|*.xap|*.xsl|*.ico|*.css|*.svg";
             var files = Utility.Utility.GetFiles($"{Directory.GetCurrentDirectory()}", filetypes, prefix, System.IO.SearchOption.AllDirectories, spoofList);
             Log($"Fetched webresources from Project, count {files.Length}");
             var publishList = new List<Guid>();
@@ -476,20 +486,59 @@ namespace XrmRegister
 
                 wr.Attributes.Add(new KeyValuePair<string, object>("content", base64String));
 
+                var checkscope = scope.Count > 0;
+                var isinscope = false;
+
                 if (existingWebresource != null)
                 {
+                    if(scope.Count > 0)
+                    {
+                        foreach(var s in scope)
+                        {
+                            if(string.IsNullOrEmpty(s.Trim()))
+                            {
+                                break;
+                            }
+                            else if(s.EndsWith(".*"))
+                            {
+                                if (existingWebresource.Name.ToLowerInvariant().StartsWith(s.ToLowerInvariant().Replace(".*", string.Empty)))
+                                {
+                                    isinscope = true;
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                if (existingWebresource.Name.ToLowerInvariant() == s.ToLowerInvariant())
+                                {
+                                    isinscope = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (checkscope && !isinscope)
+                    {
+                        Log($"Skipping webresource {file.Item2}, out-of-scope", ConsoleColor.DarkYellow);
+                        continue;
+                    }
+
                     if (contentCompare)
                     {
                         if (base64String == existingWebresource.Content)
                         {
-                            Log($"Skipping webresource {file.Item2}");
+                            Log($"Skipping webresource {file.Item2}, no-change", ConsoleColor.DarkYellow);
                             continue;
                         }
                     }
                     wr.Attributes.Add(new KeyValuePair<string, object>("webresourceid", existingWebresource.Id));
                     var ur = new UpdateRequest { Target = wr };
-                    var urr = (UpdateResponse)client.Execute(ur);
-                    Log($"Updated webresource {file.Item2}");
+                    if (!dryRun)
+                    {
+                        var urr = (UpdateResponse)client.Execute(ur);
+                    }
+                    Log($"Updated webresource {file.Item2}", ConsoleColor.Green);
                     publishList.Add(existingWebresource.Id);
                 }
                 else
@@ -505,8 +554,12 @@ namespace XrmRegister
                     wr.Attributes.Add(new KeyValuePair<string, object>("webresourcetype", new OptionSetValue(file.Item3)));
                     var cr = new CreateRequest { Target = wr };
                     cr.Parameters.Add("SolutionUniqueName", solutionName);
-                    var crr = (CreateResponse)client.Execute(cr);
-                    Log($"Created webresource {file.Item2}");
+
+                    if(!dryRun)
+                    {
+                        var crr = (CreateResponse)client.Execute(cr);
+                    }
+                    Log($"Created webresource {file.Item2}", ConsoleColor.Green);
                     publishList.Add(GuidUtility.Create(dnsNamespace, file.Item1));
                 }
             }
@@ -532,7 +585,10 @@ namespace XrmRegister
                                 var id = webresources.Where(x => x.Name == file).Select(x => x.Id).FirstOrDefault();
                                 if (id != null)
                                 {
-                                    client.Delete("webresource", id);
+                                    if (!dryRun)
+                                    {
+                                        client.Delete("webresource", id);
+                                    }
                                     Log($"Deleted webresource {file}");
                                 }
                             }
@@ -545,7 +601,10 @@ namespace XrmRegister
                             var id = webresources.Where(x => x.Name == file).Select(x => x.Id).FirstOrDefault();
                             if (id != null)
                             {
-                                client.Delete("webresource", id);
+                                if (!dryRun)
+                                {
+                                    client.Delete("webresource", id);
+                                }
                                 Log($"Deleted webresource {file}");
                             }
                         }
@@ -562,9 +621,136 @@ namespace XrmRegister
                     req.ParameterXml += "<webresource>{" + Id.ToString() + "}</webresource>";
                 req.ParameterXml += "</webresources></importexportxml>";
                 Log($"Publishing {publishList.Count} items");
-                var preq = (PublishXmlResponse)client.Execute(req);
+                if(!dryRun)
+                {
+                    var preq = (PublishXmlResponse)client.Execute(req);
+                }
+               
             }
 
+            Log("Done!");
+        }
+
+
+        public void CreateFilesFromWeb(string assemblyName, string connectionString, string solutionName, bool contentCompare, string filePath, Guid @namespace)
+        {
+            Log($"Begin to register");
+            Log($"Assembly: {assemblyName}");
+            Log($"Connection: {connectionString}");
+            Log($"Solution: {solutionName}");
+
+            var dnsNamespace = @namespace;
+            if (dnsNamespace == Guid.Empty)
+                dnsNamespace = GuidUtility.DnsNamespace;
+
+            var client = Connection.CrmConnection.GetClientByConnectionString(connectionString);
+            var context = new Microsoft.Xrm.Sdk.Client.OrganizationServiceContext(client);
+
+            string prefix = null;
+            var solutionId = Utility.Utility.FoundSolution(solutionName, client, out prefix);
+
+            if (solutionId.HasValue)
+                Log($"Found solution with name {solutionName}");
+            else
+            {
+                Log("Did not find solution, aborting");
+                return;
+            }
+
+
+            var webresources = Enumerable.Repeat(new { Id = Guid.Empty, Type = new OptionSetValue(), Name = string.Empty, Content = string.Empty }, 0).ToList();
+
+            if (contentCompare)
+            {
+                webresources = (from sc in context.CreateQuery("solutioncomponent")
+                                join wr in context.CreateQuery("webresource") on (Guid)sc["objectid"] equals (Guid)wr["webresourceid"]
+                                where (int)sc["componenttype"] == 61 && (Guid)sc["solutionid"] == solutionId
+                                select new
+                                {
+                                    Id = (Guid)wr["webresourceid"],
+                                    Type = (OptionSetValue)wr["webresourcetype"],
+                                    Name = (string)wr["name"],
+                                    Content = (string)wr["content"]
+                                }).ToList();
+            }
+            else
+            {
+                webresources = (from sc in context.CreateQuery("solutioncomponent")
+                                join wr in context.CreateQuery("webresource") on (Guid)sc["objectid"] equals (Guid)wr["webresourceid"]
+                                where (int)sc["componenttype"] == 61 && (Guid)sc["solutionid"] == solutionId
+                                select new
+                                {
+                                    Id = (Guid)wr["webresourceid"],
+                                    Type = (OptionSetValue)wr["webresourcetype"],
+                                    Name = (string)wr["name"],
+                                    Content = (string)wr["content"]
+                                }).ToList();
+            }
+
+
+
+            Log($"Fetched webresources from CRM, count {webresources.Count}");
+
+            var filetypes = "*.htm|*.html|*.js|*.png|*.gif|*.jpg|*.xml|*.xap|*.xsl|*.ico|*.css|*.svg";
+            
+            var files = Utility.Utility.GetFiles($"{Directory.GetCurrentDirectory()}", filetypes, prefix, System.IO.SearchOption.AllDirectories, new Dictionary<string, string>());
+
+            Log($"Fetched webresources from Project, count {files.Length}");
+            var publishList = new List<Guid>();
+
+            foreach (var webr in webresources)
+            {
+                var existingFile = files.Where(x => x.Item2 == webr.Name).FirstOrDefault();
+                var base64String = webr.Content;
+
+                if(existingFile != null)
+                {
+                    if (contentCompare)
+                    {
+                        var xmlbytes = Utility.Utility.GetBytesFromFile(existingFile.Item1);
+                        var content = Convert.ToBase64String(xmlbytes);
+                        if(webr.Content == content)
+                        {
+                            Log($"Skipping webresource {webr.Name}");
+                            continue;
+                        }
+
+                        var relativeDirectory = existingFile.Item2.Replace("/", "\\");
+                        if (relativeDirectory.Contains("\\"))
+                            relativeDirectory = relativeDirectory.Substring(prefix.Length + 1);
+
+                        Log($"Writing file to {filePath}{relativeDirectory}");
+
+
+                        var filepath = $"{filePath}{relativeDirectory}";
+
+
+                        System.IO.FileInfo file = new System.IO.FileInfo(filepath);
+                        file.Directory.Create();
+
+                        Log($"Writing file to {filepath}");
+                        File.WriteAllBytes($"{filepath}", Convert.FromBase64String(webr.Content));
+
+                        //Compare if nescarry
+                    }
+                }
+                else
+                {
+                    var relativeDirectory = webr.Name.Replace("/", "\\");
+                    if (relativeDirectory.Contains("\\"))
+                        relativeDirectory = relativeDirectory.Substring(prefix.Length + 1);
+
+                    var filepath = $"{filePath}{relativeDirectory}";
+
+                    System.IO.FileInfo file = new System.IO.FileInfo(filepath);
+                    file.Directory.Create();
+
+                    Log($"Writing file to {filepath}");
+                    File.WriteAllBytes($"{filepath}", Convert.FromBase64String(webr.Content));
+                }
+
+                
+            }
             Log("Done!");
         }
 

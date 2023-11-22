@@ -446,6 +446,9 @@ namespace XrmRegister.Utility
                 case "ico":
                     typevalue = 10;
                     break;
+                case "svg":
+                    typevalue = 11;
+                    break;
             }
             return typevalue;
         }
