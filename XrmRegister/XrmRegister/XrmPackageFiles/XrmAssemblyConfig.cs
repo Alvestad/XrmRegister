@@ -46,7 +46,8 @@ namespace XrmRegister
     {
         Plugin = 0,
         Workflow = 1,
-        Webhook = 2
+        Webhook = 2,
+        Package = 3
     }
 
 
