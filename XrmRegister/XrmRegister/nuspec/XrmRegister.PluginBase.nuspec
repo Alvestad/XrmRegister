@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>XrmRegister.PluginBase</id>
-    <version>3.0.2</version>
+    <version>3.0.3</version>
     <title>XrmRegister.PluginBase</title>
     <authors>Gaute Odin Alvestad</authors>
     <owners>Gaute Odin Alvestad</owners>
@@ -10,7 +10,7 @@
     <licenseUrl>https://github.com/Alvestad/XrmRegister/blob/master/LICENSE</licenseUrl>
     <projectUrl>https://github.com/Alvestad/XrmRegister</projectUrl>
     <description>Base plugin class and config to enable XrmRegister.Deploy to read the configuration of the assembly</description>
-    <releaseNotes>Added feature to impersonate in plugin context</releaseNotes>
+    <releaseNotes>Support for PackageReference</releaseNotes>
     <copyright>Copyright 2023</copyright>
     <tags>CRM</tags>
     <dependencies>
@@ -26,5 +26,11 @@
     <file src="XrmPackageFiles\XrmPluginContext.cs" target="content\XrmBase\XrmPluginContext.cs" />
     <file src="XrmPackageFiles\XrmExtensions.cs" target="content\XrmBase\XrmExtensions.cs" />
     <file src="XrmPackageFiles\XrmMessages.cs" target="content\XrmBase\XrmMessages.cs" />
+    <file src="XrmPackageFiles\XrmAssemblyConfig.cs" target="contentFiles\any\any\XrmBase\XrmAssemblyConfig.cs" />
+    <file src="XrmPackageFiles\XrmPlugin.cs" target="contentFiles\any\any\XrmBase\XrmPlugin.cs" />
+	<file src="XrmPackageFiles\XrmShared.cs" target="contentFiles\any\any\XrmBase\XrmShared.cs" />
+    <file src="XrmPackageFiles\XrmPluginContext.cs" target="contentFiles\any\any\XrmBase\XrmPluginContext.cs" />
+    <file src="XrmPackageFiles\XrmExtensions.cs" target="contentFiles\any\any\XrmBase\XrmExtensions.cs" />
+    <file src="XrmPackageFiles\XrmMessages.cs" target="contentFiles\any\any\XrmBase\XrmMessages.cs" />
   </files>
 </package>
