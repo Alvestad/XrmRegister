@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.ServiceModel.Web;
 using System.Text;
@@ -19,6 +20,9 @@ namespace XrmRegister.Utility
         public Collection<XrmWebHookContainer> WebHookTypes { get; set; } = new Collection<XrmWebHookContainer>();
 
         public EntityReference AssemblyRef { get; set; }
+
+        public EntityReference PackageRef { get; set; }
+
         public Collection<XrmImageContainer> GetImages()
         {
             var result = new Collection<XrmImageContainer>();
@@ -58,13 +62,21 @@ namespace XrmRegister.Utility
         }
 
 
-        public static XrmInstanceConfiguration GetPluginTypesHiearki(string assemblyName, IOrganizationService service)
+        public static XrmInstanceConfiguration GetPluginTypesHiearki(string assemblyName, IOrganizationService service, string solutionPrefix = null, string packageName = null)
         {
+            var result = new XrmInstanceConfiguration();
+
+            if (!string.IsNullOrWhiteSpace(packageName))
+                result.PackageRef = GetPackage($"{solutionPrefix}_{packageName}", service);
+
             var ass = GetAssembly(assemblyName, service);
             if (ass == null)
-                return new XrmInstanceConfiguration();
+                return result;
 
-            return GetPluginTypesHiearki(ass, service);
+            var assConfig = GetPluginTypesHiearki(ass, service);
+            assConfig.PackageRef = result.PackageRef;
+
+            return assConfig;
         }
 
         public static XrmInstanceConfiguration GetWebHookTypesHiearki(string assemblyName, IOrganizationService service)
@@ -120,6 +132,22 @@ namespace XrmRegister.Utility
                 assRef = ass.ToEntityReference();
 
             return assRef;
+        }
+
+        public static EntityReference GetPackage(string packageName, IOrganizationService service)
+        {
+            //tempfix navn
+            //packageName = $"tek_{packageName}";
+
+            var context = new Microsoft.Xrm.Sdk.Client.OrganizationServiceContext(service);
+            var package = (from a in context.CreateQuery("pluginpackage") where (string)a["name"] == packageName select a).FirstOrDefault();
+
+            EntityReference packRef = null;
+
+            if (package != null)
+                packRef = package.ToEntityReference();
+
+            return packRef;
         }
 
         public static EntityReference GetServiceEndpoint(string assemblyName, IOrganizationService service)

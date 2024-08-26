@@ -1,16 +1,21 @@
 ﻿using Microsoft.Crm.Sdk.Messages;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Messages;
+using Microsoft.Xrm.Sdk.Query;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Web.Services.Description;
 using XrmRegister.Utility;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace XrmRegister
 {
@@ -754,13 +759,15 @@ namespace XrmRegister
             Log("Done!");
         }
 
-        public void RegisterAssembly(string assemblyName, string connectionString, string solutionName)
+        public void RegisterAssembly(string assemblyName, string connectionString, string solutionName, string packageName = null)
         {
-            RegisterAssembly(assemblyName, connectionString, solutionName, Guid.Empty);
+            RegisterAssembly(assemblyName, connectionString, solutionName, packageName, Guid.Empty);
         }
-        public void RegisterAssembly(string assemblyName, string connectionString, string solutionName, Guid @namespace)
+        public void RegisterAssembly(string assemblyName, string connectionString, string solutionName, string packageName, Guid @namespace)
         {
             pluginUnsecureConfig = PluginConfig.GetConfigList();
+
+            var ispackage = !string.IsNullOrEmpty(packageName);
 
             Log($"Begin to register");
             Log($"Assembly: {assemblyName}");
@@ -775,12 +782,46 @@ namespace XrmRegister
 
             var xrmMetaData = new XrmMetaData(client);
 
-            var solutionId = Utility.Utility.FoundSolution(solutionName, client);
+
+            var solutionPrefix = string.Empty;
+            var solutionId = Utility.Utility.FoundSolution(solutionName, client, out solutionPrefix);
 
             if (solutionId.HasValue)
                 Log($"Found solution with name {solutionName}");
             else
                 Log("Did not find solution, using default solution");
+
+            var packageFriendlyName = "";
+            var packageVersion = "";
+
+
+            if (ispackage)
+            {
+                var nupkg_regex = new Regex("^(.*?)\\.((?:\\.?[0-9]+){3,}(?:[-a-z]+)?)\\.nupkg$");
+
+                var nupkg_macthes = nupkg_regex.Match(packageName);
+                if (nupkg_macthes.Groups.Count == 3)
+                {
+                    packageFriendlyName = nupkg_macthes.Groups[1].Value;
+                    packageVersion = nupkg_macthes.Groups[2].Value;
+
+                    Log($"Friendly package name: {packageFriendlyName}");
+                    Log($"Pacakge version: {packageVersion}");
+                }
+                else
+                {
+                    throw new Exception("Could not determine package friendlyname or/and version");
+                }
+
+                Log($"Deploy is of type package, extracting assembly ({assemblyName}) from nupkg ({packageName})");
+
+                using (var packageArchive = System.IO.Compression.ZipFile.OpenRead(packageName))
+                {
+                    var file = packageArchive.Entries.Where(x => x.Name == assemblyName).FirstOrDefault();
+                    file.ExtractToFile(assemblyName, true);
+                }
+            }
+
 
             var ass = Assembly.LoadFrom(assemblyName);
             Version ver = ass.GetName().Version;
@@ -795,8 +836,8 @@ namespace XrmRegister
 
             XrmInstanceConfiguration instanseConfig = null;
 
-            if (assemblyConfig.AssemblyConfig.XrmAssemblyType == XrmAssemblyType.Plugin)
-                instanseConfig = XrmInstanceConfiguration.GetPluginTypesHiearki(shortAssemblyName, client);
+            if (assemblyConfig.AssemblyConfig.XrmAssemblyType == XrmAssemblyType.Plugin || assemblyConfig.AssemblyConfig.XrmAssemblyType == XrmAssemblyType.Package)
+                instanseConfig = XrmInstanceConfiguration.GetPluginTypesHiearki(shortAssemblyName, client, solutionPrefix, packageFriendlyName);
             else if (assemblyConfig.AssemblyConfig.XrmAssemblyType == XrmAssemblyType.Workflow)
                 instanseConfig = XrmInstanceConfiguration.GetWorkflowTypes(shortAssemblyName, client);
             else if (assemblyConfig.AssemblyConfig.XrmAssemblyType == XrmAssemblyType.Webhook)
@@ -920,7 +961,7 @@ namespace XrmRegister
                 }
                 Log("Done");
             }
-            else if (assemblyConfig.AssemblyConfig.XrmAssemblyType == XrmAssemblyType.Plugin)
+            else if (assemblyConfig.AssemblyConfig.XrmAssemblyType == XrmAssemblyType.Plugin || assemblyConfig.AssemblyConfig.XrmAssemblyType == XrmAssemblyType.Package)
             {
                 //Delete Plugins/Steps/Images that no longer exist, beacuse can't update assembly if plugins have been removed
                 //Remove images on existing steps
@@ -995,58 +1036,141 @@ namespace XrmRegister
 
                 Log("Cleanup Done");
                 Log("*");
-
-                //Register Assembly
                 var pa = new Entity("pluginassembly");
 
-                if (assemblyConfig.AssemblyConfig.SourceType == SourceType.Database)
-                {
-                    FileStream fs = new FileStream(assemblyName,
-                                       FileMode.Open,
-                                       FileAccess.Read);
-                    byte[] filebytes = new byte[fs.Length];
-                    fs.Read(filebytes, 0, Convert.ToInt32(fs.Length));
-                    string encodedData = Convert.ToBase64String(filebytes);
-                    pa.Attributes.Add("content", encodedData);
-                }
-                else if (assemblyConfig.AssemblyConfig.SourceType == SourceType.Disk)
-                {
-                    throw new NotImplementedException("Disk!");
-                }
-                else
-                {
-                    throw new Exception("No sourcetype defined!");
-                }
+                //var scd = client.RetrieveMultiple(new QueryExpression("solutioncomponentdefinition")
+                //{
+                //    NoLock = true,
+                //    ColumnSet = new ColumnSet("solutioncomponenttype"),
+                //    Criteria = new FilterExpression
+                //    {
+                //        Conditions =
+                //                {
+                //                    new ConditionExpression("primaryentityname", ConditionOperator.Equal, "pluginpackage")
+                //                }
+                //    }
+                //}).Entities.FirstOrDefault();
 
-                pa.Attributes.Add("sourcetype", new OptionSetValue((int)assemblyConfig.AssemblyConfig.SourceType));
-                pa.Attributes.Add("isolationmode", new OptionSetValue((int)assemblyConfig.AssemblyConfig.IsolationMode));
-                pa.Attributes.Add("version", ver.ToString());
-                pa.Attributes.Add("name", shortAssemblyName);
 
-                if (instanseConfig.AssemblyRef == null)
+                if (!ispackage)
                 {
-                    Log("Creating assembly: " + assemblyName);
-                    pa.Id = GuidUtility.Create(dnsNamespace, assemblyName);
-                    pa.Id = client.Create(pa);
-                    instanseConfig.AssemblyRef = pa.ToEntityReference();
-                }
-                else
-                {
-                    Log("Updating assembly: " + assemblyName);
-                    pa.Id = instanseConfig.AssemblyRef.Id;
-                    client.Update(pa);
-                }
-
-                if (solutionId.HasValue)
-                {
-                    AddSolutionComponentRequest addReq1 = new AddSolutionComponentRequest()
+                    //Register Assembly
+                    if (assemblyConfig.AssemblyConfig.SourceType == SourceType.Database)
                     {
-                        ComponentType = 91,
-                        ComponentId = instanseConfig.AssemblyRef.Id,
-                        SolutionUniqueName = solutionName
-                    };
-                    Log("Add assembly to solution: " + solutionName);
-                    var result = client.Execute(addReq1);
+                        FileStream fs = new FileStream(assemblyName,
+                                           FileMode.Open,
+                                           FileAccess.Read);
+                        byte[] filebytes = new byte[fs.Length];
+                        fs.Read(filebytes, 0, Convert.ToInt32(fs.Length));
+                        string encodedData = Convert.ToBase64String(filebytes);
+                        pa.Attributes.Add("content", encodedData);
+                    }
+                    else if (assemblyConfig.AssemblyConfig.SourceType == SourceType.Disk)
+                    {
+                        throw new NotImplementedException("Disk!");
+                    }
+                    else
+                    {
+                        throw new Exception("No sourcetype defined!");
+                    }
+
+                    pa.Attributes.Add("sourcetype", new OptionSetValue((int)assemblyConfig.AssemblyConfig.SourceType));
+                    pa.Attributes.Add("isolationmode", new OptionSetValue((int)assemblyConfig.AssemblyConfig.IsolationMode));
+                    pa.Attributes.Add("version", ver.ToString());
+                    pa.Attributes.Add("name", shortAssemblyName);
+
+                    if (instanseConfig.AssemblyRef == null)
+                    {
+                        Log("Creating assembly: " + assemblyName);
+                        pa.Id = GuidUtility.Create(dnsNamespace, assemblyName);
+                        pa.Id = client.Create(pa);
+                        instanseConfig.AssemblyRef = pa.ToEntityReference();
+                    }
+                    else
+                    {
+                        Log("Updating assembly: " + assemblyName);
+                        pa.Id = instanseConfig.AssemblyRef.Id;
+                        client.Update(pa);
+                    }
+
+                    if (solutionId.HasValue)
+                    {
+                        AddSolutionComponentRequest addReq1 = new AddSolutionComponentRequest()
+                        {
+                            ComponentType = 91,
+                            ComponentId = instanseConfig.AssemblyRef.Id,
+                            SolutionUniqueName = solutionName
+                        };
+                        Log("Add assembly to solution: " + solutionName);
+                        var result = client.Execute(addReq1);
+                    }
+                }
+                else
+                {
+                    var package = new Entity("pluginpackage");
+
+                    if (assemblyConfig.AssemblyConfig.SourceType == SourceType.Database)
+                    {
+                        FileStream fs = new FileStream($"{packageName}",
+                                           FileMode.Open,
+                                           FileAccess.Read);
+                        byte[] filebytes = new byte[fs.Length];
+                        fs.Read(filebytes, 0, Convert.ToInt32(fs.Length));
+                        string encodedData = Convert.ToBase64String(filebytes);
+                        package.Attributes.Add("content", encodedData);
+                    }
+                    else if (assemblyConfig.AssemblyConfig.SourceType == SourceType.Disk)
+                    {
+                        throw new NotImplementedException("Disk!");
+                    }
+                    else
+                    {
+                        throw new Exception("No sourcetype defined!");
+                    }
+                    if (instanseConfig.PackageRef == null)
+                    {
+                        package.Attributes.Add("name", $"{solutionPrefix}_{packageFriendlyName}");
+                        package.Attributes.Add("version", packageVersion);
+
+                        Log("Creating package: " + packageFriendlyName);
+                        package.Id = GuidUtility.Create(dnsNamespace, packageName);
+                        package.Id = client.Create(package);
+
+                    }
+                    else
+                    {
+                        Log("Updating package: " + packageFriendlyName);
+                        package.Id = instanseConfig.PackageRef.Id;
+                        client.Update(package);
+                    }
+                    //refresh instance info, as the package registration has created/updated all the plugintypes
+                    instanseConfig = XrmInstanceConfiguration.GetPluginTypesHiearki(shortAssemblyName, client);
+                    instanseConfig.PackageRef = package.ToEntityReference();
+
+                    if (solutionId.HasValue)
+                    {
+                        AddSolutionComponentRequest addReq1 = new AddSolutionComponentRequest()
+                        {
+                            ComponentType = 10030,
+                            ComponentId = package.Id,
+                            SolutionUniqueName = solutionName
+                        };
+                        Log("Add package to solution: " + solutionName);
+                        var result = client.Execute(addReq1);
+                    }
+
+                    //if (solutionId.HasValue)
+                    //{
+                    //    AddSolutionComponentRequest addReq1 = new AddSolutionComponentRequest()
+                    //    {
+                    //        ComponentType = 91,
+                    //        ComponentId = instanseConfig.AssemblyRef.Id,
+                    //        SolutionUniqueName = solutionName
+                    //    };
+                    //    Log("Add assembly to solution: " + solutionName);
+                    //    var result = client.Execute(addReq1);
+                    //}
+
                 }
 
 
