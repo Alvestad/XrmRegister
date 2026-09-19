@@ -32,6 +32,11 @@ namespace XrmRegister.Utility
 
         public static bool Compare(Image image1, XrmImageContainer image2, string attributes)
         {
+            return Compare(image1, image2, attributes, null);
+        }
+
+        public static bool Compare(Image image1, XrmImageContainer image2, string attributes, string messagePropertyName)
+        {
             if (image2 == null)
                 return false;
 
@@ -39,6 +44,10 @@ namespace XrmRegister.Utility
                 return false;
 
             if ((int)image1.ImageType != image2.Type)
+                return false;
+
+            //Only compared when XrmRegister sets messagepropertyname for the message
+            if (messagePropertyName != null && !string.Equals(messagePropertyName, image2.MessagePropertyName, StringComparison.OrdinalIgnoreCase))
                 return false;
 
             var a1 = attributes;
@@ -117,6 +126,12 @@ namespace XrmRegister.Utility
             if (step2.Mode != (int)step1.StepMode)
                 return false;
             if (step2.Stage != (int)step1.Stage)
+                return false;
+
+            //Only compared when the step sets Description, a description written by hand is otherwise left until the step is updated
+            var description2 = string.IsNullOrWhiteSpace(step2.Description) ? null : step2.Description;
+            var description1 = string.IsNullOrWhiteSpace(step1.Description) ? null : step1.Description;
+            if (step1.Description != null && description2 != description1)
                 return false;
 
             var unsecureconfig2 = string.IsNullOrWhiteSpace(step2.UnsecureConfig) ? null : step2.UnsecureConfig;

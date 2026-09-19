@@ -65,6 +65,46 @@ namespace XrmRegister
             }
         }
 
+        /// <summary>
+        /// The record on messages without Target, like SetStateDynamicEntity
+        /// </summary>
+        internal EntityReference EntityMoniker
+        {
+            get
+            {
+                return this.GetInputParameter<EntityReference>("EntityMoniker");
+            }
+        }
+
+        internal OptionSetValue State
+        {
+            get
+            {
+                return this.GetInputParameter<OptionSetValue>("State");
+            }
+        }
+
+        internal OptionSetValue Status
+        {
+            get
+            {
+                return this.GetInputParameter<OptionSetValue>("Status");
+            }
+        }
+
+        internal T GetInputParameter<T>(string name)
+        {
+            if (this.PluginExecutionContext == null)
+                return default(T);
+            if (this.PluginExecutionContext.InputParameters == null)
+                return default(T);
+            if (!this.PluginExecutionContext.InputParameters.Contains(name))
+                return default(T);
+
+            var value = this.PluginExecutionContext.InputParameters[name];
+            return value is T ? (T)value : default(T);
+        }
+
         internal Entity PreImage
         {
             get

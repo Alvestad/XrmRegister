@@ -212,7 +212,7 @@ namespace XrmRegister.Utility
 
             foreach (var pt in plugintype)
             {
-                var pluginTypeContainer = new XrmPluginTypeContainer { Name = pt.GetAttributeValue<string>("typename"), Id = pt.Id, Steps = new Collection<XrmStepContainer>() };
+                var pluginTypeContainer = new XrmPluginTypeContainer { Name = pt.GetAttributeValue<string>("typename"), Id = pt.Id, Description = pt.GetAttributeValue<string>("description"), Steps = new Collection<XrmStepContainer>() };
 
                 var pluginsteps = steps.Where(x => x.Step.GetAttributeValue<EntityReference>("plugintypeid").Id == pt.Id).ToList();
                 foreach (var step in pluginsteps)
@@ -229,6 +229,7 @@ namespace XrmRegister.Utility
                         Rank = step.Step.GetAttributeValue<int?>("rank").Value,
                         Mode = step.Step.GetAttributeValue<OptionSetValue>("mode").Value,
                         Stage = step.Step.GetAttributeValue<OptionSetValue>("stage").Value,
+                        Description = step.Step.GetAttributeValue<string>("description"),
                         UnsecureConfig = step.Step.GetAttributeValue<string>("configuration"),
                         SecureConfig = secureConfig != null ? secureConfig.Step.SecureConfig : null,
                         SecureConfigId = secureConfig != null ? (Guid?)secureConfig.Step.SecureConfigId : null
@@ -243,6 +244,7 @@ namespace XrmRegister.Utility
                             Name = image.GetAttributeValue<string>("name"),
                             Type = image.GetAttributeValue<OptionSetValue>("imagetype").Value,
                             Attributes = image.GetAttributeValue<string>("attributes"),
+                            MessagePropertyName = image.GetAttributeValue<string>("messagepropertyname"),
                             XrmPluginTypeName = pt.GetAttributeValue<string>("name"),
                             XrmStepContainerName = step.Step.GetAttributeValue<string>("name"),
                             
@@ -330,6 +332,7 @@ namespace XrmRegister.Utility
                             Name = image.GetAttributeValue<string>("name"),
                             Type = image.GetAttributeValue<OptionSetValue>("imagetype").Value,
                             Attributes = image.GetAttributeValue<string>("attributes"),
+                            MessagePropertyName = image.GetAttributeValue<string>("messagepropertyname"),
                             XrmPluginTypeName = wh.GetAttributeValue<string>("name"),
                             XrmStepContainerName = step.Step.GetAttributeValue<string>("name"),
                             
@@ -365,6 +368,7 @@ namespace XrmRegister.Utility
     {
         public Guid Id { get; set; }
         public string Name { get; set; }
+        public string Description { get; set; }
         public Collection<XrmStepContainer> Steps { get; set; } = new Collection<XrmStepContainer>();
     }
 
@@ -372,6 +376,7 @@ namespace XrmRegister.Utility
     {
         public Guid Id { get; set; }
         public string Name { get; set; }
+        public string Description { get; set; }
         public Collection<XrmImageContainer> Images { get; set; } = new Collection<XrmImageContainer>();
         public string XrmPluginTypeName { get; set; }
         public int Rank { get; set; }
@@ -391,6 +396,7 @@ namespace XrmRegister.Utility
         public string Name { get; set; }
         public int Type { get; set; }
         public string Attributes { get; set; }
+        public string MessagePropertyName { get; set; }
         public string XrmStepContainerName { get; set; }
         public string XrmPluginTypeName { get; set; }
     }

@@ -32,6 +32,7 @@ namespace XrmRegister
         public string SecureConfig { get; private set; }
 
         public string TypeName { get; set; }
+        public string Description { get; set; }
         public string PluginStepCollection
         {
             get
@@ -145,6 +146,8 @@ namespace XrmRegister
     {
         [System.Runtime.Serialization.DataMember]
         public string Name { get; set; }
+        [System.Runtime.Serialization.DataMember]
+        public string Description { get; set; }
         [System.Runtime.Serialization.DataMember]
         public StepStage Stage { get; set; }
         [System.Runtime.Serialization.DataMember]

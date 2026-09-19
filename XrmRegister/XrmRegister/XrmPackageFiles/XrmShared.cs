@@ -68,5 +68,12 @@ namespace XrmRegister
         [System.Runtime.Serialization.DataMember]
         public AttributeMode AttributeMode { get; set; }
 
+        /// <summary>
+        /// Optional. Overrides the messagepropertyname the image is registered with.
+        /// When not set, XrmRegister.Deploy uses the default for the message of the step.
+        /// </summary>
+        [System.Runtime.Serialization.DataMember]
+        public string MessagePropertyName { get; set; }
+
     }
 }

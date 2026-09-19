@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>XrmRegister.PluginBase</id>
-    <version>3.0.3</version>
+    <version>3.0.4</version>
     <title>XrmRegister.PluginBase</title>
     <authors>Gaute Odin Alvestad</authors>
     <owners>Gaute Odin Alvestad</owners>
@@ -10,7 +10,7 @@
     <licenseUrl>https://github.com/Alvestad/XrmRegister/blob/master/LICENSE</licenseUrl>
     <projectUrl>https://github.com/Alvestad/XrmRegister</projectUrl>
     <description>Base plugin class and config to enable XrmRegister.Deploy to read the configuration of the assembly</description>
-    <releaseNotes>Support for PackageReference</releaseNotes>
+    <releaseNotes>EntityMoniker, State, Status and GetInputParameter on XrmPluginContext. Description on XrmPlugin and PluginStep. Optional Image.MessagePropertyName</releaseNotes>
     <copyright>Copyright 2023</copyright>
     <tags>CRM</tags>
     <dependencies>

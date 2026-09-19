@@ -76,9 +76,12 @@ namespace XrmRegister.Utility
 
                     var EventCollectionProp = props.Where(x => x.Name == "PluginStepCollection").FirstOrDefault();
                     var TypeNameProp = props.Where(x => x.Name == "TypeName").FirstOrDefault();
+                    //Missing in assemblies built with XrmRegister.PluginBase 3.0.3 or older
+                    var DescriptionProp = props.Where(x => x.Name == "Description" && x.PropertyType == typeof(string)).FirstOrDefault();
 
                     var EventCollectionValue = (string)EventCollectionProp.GetValue(instanceOfMyType, null);
                     var TypeNameValue = (string)TypeNameProp.GetValue(instanceOfMyType, null);
+                    var DescriptionValue = DescriptionProp != null ? (string)DescriptionProp.GetValue(instanceOfMyType, null) : null;
 
                     if (!string.IsNullOrWhiteSpace(TypeNameValue))
                     {
@@ -87,7 +90,7 @@ namespace XrmRegister.Utility
                         var ms = new MemoryStream(Encoding.UTF8.GetBytes(EventCollectionValue));
                         var plugin = json_ser.ReadObject(ms) as Collection<PluginStep>;
                         ms.Close();
-                        config.PluginTypes.Add(new XrmPluginType { Steps = plugin, TypeName = TypeNameValue });
+                        config.PluginTypes.Add(new XrmPluginType { Steps = plugin, TypeName = TypeNameValue, Description = DescriptionValue });
                     }
                 }
                 else if(type.BaseType.Name == "XrmWebHook" && type.IsInterface == false)
@@ -173,8 +176,14 @@ namespace XrmRegister.Utility
 
             foreach (var pluginType in config.PluginTypes)
             {
+                //plugintype.description and sdkmessageprocessingstep.description are max 256 characters. Fail before anything is written
+                if (pluginType.Description != null && pluginType.Description.Length > 256)
+                    throw new Exception($"Description on {pluginType.TypeName} is {pluginType.Description.Length} characters, max is 256");
+
                 for (int i = 0; i < pluginType.Steps.Count; i++)
                 {
+                    if (pluginType.Steps[i].Description != null && pluginType.Steps[i].Description.Length > 256)
+                        throw new Exception($"Description on step {pluginType.Steps[i].Name} ({pluginType.TypeName}) is {pluginType.Steps[i].Description.Length} characters, max is 256");
 
                     pluginType.Steps[i].TypeName = pluginType.TypeName;
                     if (pluginType.Steps[i].Images != null)
@@ -212,6 +221,7 @@ namespace XrmRegister.Utility
     public class XrmPluginType
     {
         public string TypeName { get; set; }
+        public string Description { get; set; }
         public Collection<PluginStep> Steps { get; set; }
     }
 

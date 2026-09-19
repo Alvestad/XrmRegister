@@ -1188,13 +1188,31 @@ namespace XrmRegister
                         Log($"Creating plugintype {ptype.GetAttributeValue<string>("typename")}");
                         ptype.Id = GuidUtility.Create(dnsNamespace, ptype.GetAttributeValue<string>("typename"));
                         ptype.Attributes.Add("friendlyname", ptype.Id.ToString());
+                        if (pluginType.Description != null)
+                            ptype.Attributes.Add("description", pluginType.Description);
                         ptype.Id = client.Create(ptype);
                     }
                     else
                     {
-                        Log($"Skipping plugintype {ptype.GetAttributeValue<string>("typename")}");
                         ptype.Id = existingPluginTypeContainer.Id;
                         ptype.Attributes.Add("friendlyname", ptype.Id.ToString());
+
+                        //Description is left untouched when the plugin doesn't set it
+                        var description1 = string.IsNullOrWhiteSpace(pluginType.Description) ? null : pluginType.Description;
+                        var description2 = string.IsNullOrWhiteSpace(existingPluginTypeContainer.Description) ? null : existingPluginTypeContainer.Description;
+
+                        if (pluginType.Description != null && description1 != description2)
+                        {
+                            Log($"Updating description on plugintype {ptype.GetAttributeValue<string>("typename")}");
+                            var ptypeDescription = new Entity("plugintype");
+                            ptypeDescription.Id = ptype.Id;
+                            ptypeDescription.Attributes.Add("description", pluginType.Description);
+                            client.Update(ptypeDescription);
+                        }
+                        else
+                        {
+                            Log($"Skipping plugintype {ptype.GetAttributeValue<string>("typename")}");
+                        }
                     }
 
 
@@ -1208,7 +1226,7 @@ namespace XrmRegister
                         step.Attributes.Add("mode", new OptionSetValue((int)stp.StepMode));
                         step.Attributes.Add("rank", stp.Rank);
                         step.Attributes.Add("name", stp.Name);
-                        step.Attributes.Add("description", "");
+                        step.Attributes.Add("description", stp.Description ?? "");
                         step.Attributes.Add("supporteddeployment", new OptionSetValue(0));  //new OptionSetValue((int)stp.SupportedDeployment);
                         step.Attributes.Add("filteringattributes", null);
 
@@ -1316,10 +1334,9 @@ namespace XrmRegister
                             image.Attributes.Add("imagetype", new OptionSetValue((int)_image.ImageType));
                             image.Attributes.Add("name", _image.Name);
                             image.Attributes.Add("entityalias", _image.Name);
-                            if (stp.MessageName == "Update" || stp.MessageName == "Delete")
-                                image.Attributes.Add("messagepropertyname", "Target");
-                            else if (stp.MessageName == "Create")
-                                image.Attributes.Add("messagepropertyname", "Id");
+                            var messagePropertyName = GetImageMessagePropertyName(stp.MessageName, _image);
+                            if (messagePropertyName != null)
+                                image.Attributes.Add("messagepropertyname", messagePropertyName);
                             image.Attributes.Add("sdkmessageprocessingstepid", new EntityReference("sdkmessageprocessingstep", _StepId)); // step.ToEntityReference();
 
                             if (_image.Attributes != null && _image.Attributes.Length != 0)
@@ -1344,7 +1361,7 @@ namespace XrmRegister
                             x.XrmStepContainerName == _image.PluginEventName
                             ).FirstOrDefault();
 
-                            if (!overrideUpdateImages && Utility.Utility.Compare(_image, existingImageContainer, image.GetAttributeValue<string>("attributes")))
+                            if (!overrideUpdateImages && Utility.Utility.Compare(_image, existingImageContainer, image.GetAttributeValue<string>("attributes"), messagePropertyName))
                             {
                                 Log($"Skipping image {image.GetAttributeValue<string>("name")} ({stp.Name}|{ptype.GetAttributeValue<string>("typename")})");
                             }
@@ -1578,10 +1595,9 @@ namespace XrmRegister
                             image.Attributes.Add("imagetype", new OptionSetValue((int)_image.ImageType));
                             image.Attributes.Add("name", _image.Name);
                             image.Attributes.Add("entityalias", _image.Name);
-                            if (stp.MessageName == "Update" || stp.MessageName == "Delete")
-                                image.Attributes.Add("messagepropertyname", "Target");
-                            else if (stp.MessageName == "Create")
-                                image.Attributes.Add("messagepropertyname", "Id");
+                            var messagePropertyName = GetImageMessagePropertyName(stp.MessageName, _image);
+                            if (messagePropertyName != null)
+                                image.Attributes.Add("messagepropertyname", messagePropertyName);
                             image.Attributes.Add("sdkmessageprocessingstepid", new EntityReference("sdkmessageprocessingstep", _StepId)); // step.ToEntityReference();
 
                             if (_image.Attributes != null && _image.Attributes.Length != 0)
@@ -1606,7 +1622,7 @@ namespace XrmRegister
                             x.XrmStepContainerName == _image.PluginEventName
                             ).FirstOrDefault();
 
-                            if (!overrideUpdateImages && Utility.Utility.Compare(_image, existingImageContainer, image.GetAttributeValue<string>("attributes")))
+                            if (!overrideUpdateImages && Utility.Utility.Compare(_image, existingImageContainer, image.GetAttributeValue<string>("attributes"), messagePropertyName))
                             {
                                 Log($"Skipping image {image.GetAttributeValue<string>("name")} ({stp.Name}|{stp.TypeName})");
                             }
@@ -1640,6 +1656,37 @@ namespace XrmRegister
             var xrmMetaData = new XrmMetaData(client);
 
             xrmMetaData.GenerateMessagesStruct(filePath);
+        }
+
+        /// <summary>
+        /// The input parameter an image is taken from. Image.MessagePropertyName overrides the default for the message.
+        /// Returns null for messages without a known default, messagepropertyname is then not set.
+        /// </summary>
+        private static string GetImageMessagePropertyName(string messageName, Image image)
+        {
+            if (!string.IsNullOrWhiteSpace(image.MessagePropertyName))
+                return image.MessagePropertyName;
+
+            switch (messageName)
+            {
+                case "Create":
+                    return "Id";
+                case "Update":
+                case "Delete":
+                case "Assign":
+                case "Route":
+                case "Merge":
+                    return "Target";
+                case "SetState":
+                case "SetStateDynamicEntity":
+                    return "EntityMoniker";
+                case "Send":
+                case "DeliverIncoming":
+                case "DeliverPromote":
+                    return "EmailId";
+                default:
+                    return null;
+            }
         }
 
         private string GenerateKeyValueXml(Collection<AuthValue> values)
