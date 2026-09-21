@@ -231,7 +231,8 @@ namespace XrmRegister.Utility
                         Stage = step.Step.GetAttributeValue<OptionSetValue>("stage").Value,
                         UnsecureConfig = step.Step.GetAttributeValue<string>("configuration"),
                         SecureConfig = secureConfig != null ? secureConfig.Step.SecureConfig : null,
-                        SecureConfigId = secureConfig != null ? (Guid?)secureConfig.Step.SecureConfigId : null
+                        SecureConfigId = secureConfig != null ? (Guid?)secureConfig.Step.SecureConfigId : null,
+                        Description = step.Step.GetAttributeValue<string>("description")
                     };
 
 
@@ -319,6 +320,7 @@ namespace XrmRegister.Utility
                         Rank = step.Step.GetAttributeValue<int?>("rank").Value,
                         Mode = step.Step.GetAttributeValue<OptionSetValue>("mode").Value,
                         Stage = step.Step.GetAttributeValue<OptionSetValue>("stage").Value,
+                        Description = step.Step.GetAttributeValue<string>("description")
                     };
 
 
@@ -383,6 +385,7 @@ namespace XrmRegister.Utility
         public string UnsecureConfig { get; set; }
         public string SecureConfig { get; set; }
         public Guid? SecureConfigId { get; set; }
+        public string Description { get; set; }
     }
 
     public class XrmImageContainer

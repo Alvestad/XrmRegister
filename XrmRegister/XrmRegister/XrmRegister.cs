@@ -1208,7 +1208,7 @@ namespace XrmRegister
                         step.Attributes.Add("mode", new OptionSetValue((int)stp.StepMode));
                         step.Attributes.Add("rank", stp.Rank);
                         step.Attributes.Add("name", stp.Name);
-                        step.Attributes.Add("description", "");
+                        step.Attributes.Add("description", stp.Description ?? "");
                         step.Attributes.Add("supporteddeployment", new OptionSetValue(0));  //new OptionSetValue((int)stp.SupportedDeployment);
                         step.Attributes.Add("filteringattributes", null);
 
@@ -1506,7 +1506,7 @@ namespace XrmRegister
                         step.Attributes.Add("mode", new OptionSetValue((int)stp.StepMode));
                         step.Attributes.Add("rank", stp.Rank);
                         step.Attributes.Add("name", stp.Name);
-                        step.Attributes.Add("description", "");
+                        step.Attributes.Add("description", stp.Description ?? "");
                         step.Attributes.Add("supporteddeployment", new OptionSetValue(0));  //new OptionSetValue((int)stp.SupportedDeployment);
                         step.Attributes.Add("filteringattributes", null);
 

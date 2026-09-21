@@ -66,7 +66,8 @@ namespace XrmRegister.Utility
             {
                 if (type.BaseType == null)
                     continue;
-                if (type.BaseType.Name == "XrmPlugin" && type.IsInterface == false)
+                //if (type.BaseType.Name == "XrmPlugin" && type.IsInterface == false)
+                if(Inherits(type, "XrmPlugin") && CanIniniate(type))
                 {
                     Type _type = assembly.GetType("XrmRegister.XrmPlugin");
                     object instanceOfMyType = Activator.CreateInstance(type, new object[] { null, null });
@@ -90,7 +91,8 @@ namespace XrmRegister.Utility
                         config.PluginTypes.Add(new XrmPluginType { Steps = plugin, TypeName = TypeNameValue });
                     }
                 }
-                else if(type.BaseType.Name == "XrmWebHook" && type.IsInterface == false)
+                //else if(type.BaseType.Name == "XrmWebHook" && type.IsInterface == false)
+                if (Inherits(type, "XrmWebHook") && CanIniniate(type))
                 {
                     Type _type = assembly.GetType("XrmRegister.XrmWebHook");
                     object instanceOfMyType = Activator.CreateInstance(type, new object[] {
@@ -133,7 +135,8 @@ namespace XrmRegister.Utility
                     }
 
                 }
-                else if(type.BaseType.Name == "XrmWorkflow")
+                //else if(type.BaseType.Name == "XrmWorkflow")
+                if (Inherits(type, "XrmWorkflow") && CanIniniate(type))
                 {
                     Type _type = assembly.GetType("XrmRegister.XrmWorkflow");
                     object instanceOfMyType = Activator.CreateInstance(type);
@@ -152,7 +155,8 @@ namespace XrmRegister.Utility
                     ms.Close();
                     config.WorkFlowTypes.Add(new XrmWorkflowType { Workflow = workflow });
                 }
-                else if (type.BaseType.Name == "XrmAssemblyConfig")
+                //else if (type.BaseType.Name == "XrmAssemblyConfig")
+                if (Inherits(type, "XrmAssemblyConfig") && CanIniniate(type))
                 {
                     Type _type = assembly.GetType("XrmRegister.XrmAssemblyConfig");
                     object instanceOfMyType = Activator.CreateInstance(type);
@@ -207,6 +211,15 @@ namespace XrmRegister.Utility
 
             return config;
         }
+
+        static bool Inherits(Type type, string baseName)
+        {
+            for (var b = type.BaseType; b != null; b = b.BaseType)
+                if (b.Name == baseName) return true;
+            return false;
+        }
+
+        static bool CanIniniate(Type type) => !type.IsInterface && !type.IsAbstract && !type.IsGenericTypeDefinition;
     }
 
     public class XrmPluginType

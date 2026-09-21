@@ -82,6 +82,7 @@ namespace XrmRegister.Utility
             var nameInGroup1 = string.IsNullOrWhiteSpace(work1.NameInGroup) ? null : work1.NameInGroup;
             var nameInGroup2 = string.IsNullOrWhiteSpace(work2.NameInGroup) ? null : work2.NameInGroup;
 
+
             if (group1 != group2)
                 return false;
             if (nameInGroup1 != nameInGroup2)
@@ -127,6 +128,11 @@ namespace XrmRegister.Utility
             var secureconfig2 = string.IsNullOrWhiteSpace(step2.SecureConfig) ? null : step2.SecureConfig;
             var secureconfig1 = string.IsNullOrWhiteSpace(secureconfig) ? null : secureconfig;
             if (secureconfig2 != secureconfig1)
+                return false;
+
+            var description1 = string.IsNullOrWhiteSpace(step1.Description) ? null : step1.Description;
+            var description2 = string.IsNullOrWhiteSpace(step2.Description) ? null : step2.Description;
+            if (description1 != description2)
                 return false;
 
             if (filteringAttributes != null && step2.FilteringAttributes == null)
@@ -186,6 +192,12 @@ namespace XrmRegister.Utility
                 return false;
             if (filteringAttributes == null && step2.FilteringAttributes != null)
                 return false;
+
+            var description1 = string.IsNullOrWhiteSpace(step1.Description) ? null : step1.Description;
+            var description2 = string.IsNullOrWhiteSpace(step2.Description) ? null : step2.Description;
+            if (description1 != description2)
+                return false;
+
 
             if (filteringAttributes != null && step2.FilteringAttributes != null)
             {

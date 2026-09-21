@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>XrmRegister.WebhookBase</id>
-    <version>3.0.2</version>
+    <version>3.0.3</version>
     <title>XrmRegister.WebhookBase</title>
     <authors>Gaute Odin Alvestad</authors>
     <owners>Gaute Odin Alvestad</owners>
@@ -10,7 +10,7 @@
     <licenseUrl>https://github.com/Alvestad/XrmRegister/blob/master/LICENSE</licenseUrl>
     <projectUrl>https://github.com/Alvestad/XrmRegister</projectUrl>
     <description>Base webhook class and config to enable XrmRegister.Deploy to read the configuration of the assembly</description>
-    <releaseNotes></releaseNotes>
+    <releaseNotes>Descriptions for webhooks</releaseNotes>
     <copyright>Copyright 2023</copyright>
     <tags>CRM</tags>
     <dependencies>

@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>XrmRegister.Deploy</id>
-    <version>3.0.5</version>
+    <version>3.0.6</version>
     <title>XrmRegister</title>
     <authors>Gaute Odin Alvestad</authors>
     <owners>Gaute Odin Alvestad</owners>
@@ -10,7 +10,7 @@
     <licenseUrl>https://github.com/Alvestad/XrmRegister/blob/master/LICENSE</licenseUrl>
     <projectUrl>https://github.com/Alvestad/XrmRegister</projectUrl>
     <description>Utility to deploy assemblies, webresources and report to the MSCRM platform</description>
-    <releaseNotes>Added support for crm v9, update to support clientsecret and certificate authtype </releaseNotes>
+    <releaseNotes>Abstract plugin/webhook class, easier to construct test, added descriptions for plugins</releaseNotes>
     <copyright>Copyright 2022</copyright>
     <tags>CRM</tags>
     <dependencies>
