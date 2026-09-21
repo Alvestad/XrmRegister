@@ -9,11 +9,11 @@ namespace XrmRegister
 {
     public class XrmPluginContext : IDisposable
     {
-        internal IServiceProvider ServiceProvider { get; private set; }
-        internal IOrganizationServiceFactory ServiceFactory { get; private set; }
-        internal IOrganizationService OrganizationService { get; private set; }
-        internal IPluginExecutionContext PluginExecutionContext { get; private set; }
-        internal ITracingService TracingService { get; private set; }
+        public IServiceProvider ServiceProvider { get; private set; }
+        public IOrganizationServiceFactory ServiceFactory { get; private set; }
+        public IOrganizationService OrganizationService { get; private set; }
+        public IPluginExecutionContext PluginExecutionContext { get; private set; }
+        public ITracingService TracingService { get; private set; }
         internal XrmPluginContext(IServiceProvider serviceProvider)
         {
             if (serviceProvider == null)
@@ -32,7 +32,7 @@ namespace XrmRegister
             this.OrganizationService = factory.CreateOrganizationService(this.PluginExecutionContext.UserId);
         }
 
-        internal void Trace(string message)
+        public void Trace(string message)
         {
             if (string.IsNullOrWhiteSpace(message) || this.TracingService == null)
             {
@@ -52,12 +52,12 @@ namespace XrmRegister
             }
         }
 
-        internal IOrganizationService OrganizationServiceImpersonate(Guid userId)
+        public IOrganizationService OrganizationServiceImpersonate(Guid userId)
         {
             return this.ServiceFactory.CreateOrganizationService(userId);
         }
 
-        internal Entity Target
+        public Entity Target
         {
             get
             {
@@ -65,14 +65,14 @@ namespace XrmRegister
             }
         }
 
-        internal Entity PreImage
+        public Entity PreImage
         {
             get
             {
                 return this.PluginExecutionContext.GetPreImage(null);
             }
         }
-        internal Entity PostImage
+        public Entity PostImage
         {
             get
             {
