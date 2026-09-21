@@ -45,7 +45,9 @@ namespace XrmRegister
     public enum XrmAssemblyType
     {
         Plugin = 0,
-        Workflow = 1
+        Workflow = 1,
+        Webhook = 2,
+        Package = 3
     }
 
 

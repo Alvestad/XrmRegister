@@ -1,8 +1,6 @@
-﻿using Microsoft.Xrm.Sdk;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -10,33 +8,47 @@ using System.Threading.Tasks;
 
 namespace XrmRegister
 {
-    public class XrmPlugin : IPlugin
+    public class XrmWebHook
     {
-        internal XrmPlugin(string unsecureConfig, string secureConfig)
+        internal XrmWebHook(string config)
         {
-            this.UnsecureConfig = unsecureConfig;
-            this.SecureConfig = secureConfig;
+            this.Config = config;
         }
 
-        private Collection<PluginStep> registeredSteps;
-        protected Collection<PluginStep> RegisteredSteps
+        private Collection<WebHookStep> registeredSteps;
+        protected Collection<WebHookStep> RegisteredSteps
         {
             get
             {
                 if (this.registeredSteps == null)
-                    this.registeredSteps = new Collection<PluginStep>();
+                    this.registeredSteps = new Collection<WebHookStep>();
                 return this.registeredSteps;
             }
         }
-        public string UnsecureConfig { get; private set; }
-        public string SecureConfig { get; private set; }
 
-        public string TypeName { get; set; }
-        public string PluginStepCollection
+        private Collection<AuthValue> authValues;
+        protected Collection<AuthValue> AuthValues
         {
             get
             {
-                var json_ser = new System.Runtime.Serialization.Json.DataContractJsonSerializer(typeof(Collection<PluginStep>));
+                if (this.authValues == null)
+                    this.authValues = new Collection<AuthValue>();
+                return this.authValues;
+            }
+        }
+
+        public string TypeName { get; set; }
+        public string Url { get; set; }
+        public WebhookAuthentication Authentication { get; set; }
+        public string WebhookKeyValue { get; set; }
+        public string Config { get; private set; }
+
+
+        public string WebHookStepCollection
+        {
+            get
+            {
+                var json_ser = new System.Runtime.Serialization.Json.DataContractJsonSerializer(typeof(Collection<WebHookStep>));
                 var ms = new MemoryStream();
                 json_ser.WriteObject(ms, RegisteredSteps);
 
@@ -45,40 +57,39 @@ namespace XrmRegister
                 return sr.ReadToEnd();
             }
         }
-        public void Execute(IServiceProvider serviceProvider)
+
+        public string AuthValuesCollection
         {
-            if (serviceProvider == null)
-                throw new ArgumentNullException("serviceProvider");
-
-            using (var xrmPluginContext = new XrmPluginContext(serviceProvider))
+            get
             {
-                var tracingService = (ITracingService)serviceProvider.GetService(typeof(ITracingService));
-                tracingService.Trace(string.Format(CultureInfo.InvariantCulture, "Entered {0}.Execute()", this.TypeName));
-                try
-                {
-                    var actionToInvoke = this.RegisteredSteps.Where(
-                        x => (int)x.Stage == xrmPluginContext.PluginExecutionContext.Stage
-                        && x.MessageName.ToLowerInvariant() == xrmPluginContext.PluginExecutionContext.MessageName.ToLowerInvariant()
-                        && (string.IsNullOrWhiteSpace(x.EntityName) ? true : x.EntityName.ToLowerInvariant() == xrmPluginContext.PluginExecutionContext.PrimaryEntityName.ToLowerInvariant())
-                        ).Select(x => x.ActionToInvoke).FirstOrDefault();
+                var json_ser = new System.Runtime.Serialization.Json.DataContractJsonSerializer(typeof(Collection<AuthValue>));
+                var ms = new MemoryStream();
+                json_ser.WriteObject(ms, AuthValues);
 
-                    if (actionToInvoke != null)
-                        actionToInvoke.Invoke(xrmPluginContext);
-
-                }
-                catch (Exception ex)
-                {
-                    tracingService.Trace(string.Format(CultureInfo.InvariantCulture, "Exception: {0}", ex.ToString()));
-                    throw;
-                }
-                finally
-                {
-                    tracingService.Trace(string.Format(CultureInfo.InvariantCulture, "Exiting {0}.Execute()", this.TypeName));
-                }
+                ms.Position = 0;
+                StreamReader sr = new StreamReader(ms);
+                return sr.ReadToEnd();
             }
         }
     }
-    #region PluginStep
+
+    #region WebHookStep
+
+    public enum WebhookAuthentication
+    {
+        HttpQueryString = 6,
+        Webhook = 4,
+        HttpHeader = 5
+    }
+
+    [System.Runtime.Serialization.DataContract]
+    public class AuthValue
+    {
+        [System.Runtime.Serialization.DataMember]
+        public string Key { get; set; }
+        [System.Runtime.Serialization.DataMember]
+        public string Value { get; set; }
+    }
 
     //public enum StepStage
     //{
@@ -141,7 +152,7 @@ namespace XrmRegister
     //}
 
     [System.Runtime.Serialization.DataContract]
-    public partial class PluginStep
+    public partial class WebHookStep
     {
         [System.Runtime.Serialization.DataMember]
         public string Name { get; set; }
@@ -151,7 +162,6 @@ namespace XrmRegister
         public string EntityName { get; set; }
         [System.Runtime.Serialization.DataMember]
         public string MessageName { get; set; }
-        public Action<XrmPluginContext> ActionToInvoke { get; set; }
         [System.Runtime.Serialization.DataMember]
         public string[] FilteringAttributes { get; set; }
         [System.Runtime.Serialization.DataMember]

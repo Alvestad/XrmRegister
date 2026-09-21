@@ -1,14 +1,21 @@
 ﻿using Microsoft.Crm.Sdk.Messages;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Messages;
+using Microsoft.Xrm.Sdk.Query;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Web.Services.Description;
 using XrmRegister.Utility;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace XrmRegister
 {
@@ -24,10 +31,15 @@ namespace XrmRegister
 
         }
 
-        private void Log(string message)
+        private void Log(string message, ConsoleColor color = ConsoleColor.White)
         {
+
             if (ShowMessage != null)
+            {
+                Console.ForegroundColor = color;
                 ShowMessage.Invoke(message);
+                Console.ForegroundColor = ConsoleColor.White;
+            }
         }
 
         public Tuple<string, string> GetSecureUnsecureConfiguration(string typeName, string stepName)
@@ -336,12 +348,12 @@ namespace XrmRegister
 
         public void RegisterWeb(string assemblyName, string connectionString, string solutionName, bool contentCompare, bool deleteMissing, bool promptForDelete, Dictionary<string, string> spoofList)
         {
-            RegisterWeb(assemblyName, connectionString, solutionName, new List<string>(), true, deleteMissing, promptForDelete, contentCompare, spoofList, Guid.Empty);
+            RegisterWeb(assemblyName, connectionString, solutionName, new List<string>(), true, deleteMissing, promptForDelete, contentCompare, spoofList, new List<string>(), false, Guid.Empty);
         }
 
         public void RegisterWeb(string assemblyName, string connectionString, string solutionName, bool contentCompare, bool deleteMissing, bool promptForDelete, Dictionary<string, string> spoofList, Guid @namespace)
         {
-            RegisterWeb(assemblyName, connectionString, solutionName, new List<string>(), true, deleteMissing, promptForDelete, contentCompare, spoofList, @namespace);
+            RegisterWeb(assemblyName, connectionString, solutionName, new List<string>(), true, deleteMissing, promptForDelete, contentCompare, spoofList, new List<string>(), false, @namespace);
         }
 
         public void RegisterWeb(string assemblyName, string connectionString, string solutionName, List<string> whiteList, bool iswhitelist, bool deleteMissing, bool promptForDelete, bool contentCompare)
@@ -351,15 +363,19 @@ namespace XrmRegister
 
         public void RegisterWeb(string assemblyName, string connectionString, string solutionName, List<string> whiteList, bool iswhitelist, bool deleteMissing, bool promptForDelete, bool contentCompare, Guid @namespace)
         {
-            RegisterWeb(assemblyName, connectionString, solutionName, whiteList, iswhitelist, deleteMissing, promptForDelete, contentCompare, new Dictionary<string, string>(), Guid.Empty);
+            RegisterWeb(assemblyName, connectionString, solutionName, whiteList, iswhitelist, deleteMissing, promptForDelete, contentCompare, new Dictionary<string, string>(), new List<string>(), false, Guid.Empty);
         }
 
         public void RegisterWeb(string assemblyName, string connectionString, string solutionName, List<string> whiteList, bool iswhitelist, bool deleteMissing, bool promptForDelete, bool contentCompare, Dictionary<string, string> spoofList)
         {
-            RegisterWeb(assemblyName, connectionString, solutionName, whiteList, iswhitelist, deleteMissing, promptForDelete, contentCompare, spoofList, Guid.Empty);
+            RegisterWeb(assemblyName, connectionString, solutionName, whiteList, iswhitelist, deleteMissing, promptForDelete, contentCompare, spoofList, new List<string>(), false, Guid.Empty); ;
         }
-        public void RegisterWeb(string assemblyName, string connectionString, string solutionName, List<string> whiteList, bool iswhitelist, bool deleteMissing, bool promptForDelete, bool contentCompare, Dictionary<string, string> spoofList, Guid @namespace)
+        public void RegisterWeb(string assemblyName, string connectionString, string solutionName, List<string> whiteList, bool iswhitelist, bool deleteMissing, bool promptForDelete, bool contentCompare, Dictionary<string, string> spoofList, List<string> scope, bool dryRun, Guid @namespace)
         {
+            if(dryRun)
+            {
+                Log("Dry Run");
+            }
             Log($"Begin to register");
             Log($"Assembly: {assemblyName}");
             Log($"Connection: {connectionString}");
@@ -417,7 +433,7 @@ namespace XrmRegister
 
             Log($"Fetched webresources from CRM, count {webresources.Count}");
 
-            var filetypes = "*.htm|*.html|*.js|*.png|*.gif|*.jpg|*.xml|*.xap|*.xsl|*.ico|*.css";
+            var filetypes = "*.htm|*.html|*.js|*.png|*.gif|*.jpg|*.xml|*.xap|*.xsl|*.ico|*.css|*.svg";
             var files = Utility.Utility.GetFiles($"{Directory.GetCurrentDirectory()}", filetypes, prefix, System.IO.SearchOption.AllDirectories, spoofList);
             Log($"Fetched webresources from Project, count {files.Length}");
             var publishList = new List<Guid>();
@@ -475,20 +491,59 @@ namespace XrmRegister
 
                 wr.Attributes.Add(new KeyValuePair<string, object>("content", base64String));
 
+                var checkscope = scope.Count > 0;
+                var isinscope = false;
+
                 if (existingWebresource != null)
                 {
+                    if(scope.Count > 0)
+                    {
+                        foreach(var s in scope)
+                        {
+                            if(string.IsNullOrEmpty(s.Trim()))
+                            {
+                                break;
+                            }
+                            else if(s.EndsWith(".*"))
+                            {
+                                if (existingWebresource.Name.ToLowerInvariant().StartsWith(s.ToLowerInvariant().Replace(".*", string.Empty)))
+                                {
+                                    isinscope = true;
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                if (existingWebresource.Name.ToLowerInvariant() == s.ToLowerInvariant())
+                                {
+                                    isinscope = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (checkscope && !isinscope)
+                    {
+                        Log($"Skipping webresource {file.Item2}, out-of-scope", ConsoleColor.DarkYellow);
+                        continue;
+                    }
+
                     if (contentCompare)
                     {
                         if (base64String == existingWebresource.Content)
                         {
-                            Log($"Skipping webresource {file.Item2}");
+                            Log($"Skipping webresource {file.Item2}, no-change", ConsoleColor.DarkYellow);
                             continue;
                         }
                     }
                     wr.Attributes.Add(new KeyValuePair<string, object>("webresourceid", existingWebresource.Id));
                     var ur = new UpdateRequest { Target = wr };
-                    var urr = (UpdateResponse)client.Execute(ur);
-                    Log($"Updated webresource {file.Item2}");
+                    if (!dryRun)
+                    {
+                        var urr = (UpdateResponse)client.Execute(ur);
+                    }
+                    Log($"Updated webresource {file.Item2}", ConsoleColor.Green);
                     publishList.Add(existingWebresource.Id);
                 }
                 else
@@ -504,8 +559,12 @@ namespace XrmRegister
                     wr.Attributes.Add(new KeyValuePair<string, object>("webresourcetype", new OptionSetValue(file.Item3)));
                     var cr = new CreateRequest { Target = wr };
                     cr.Parameters.Add("SolutionUniqueName", solutionName);
-                    var crr = (CreateResponse)client.Execute(cr);
-                    Log($"Created webresource {file.Item2}");
+
+                    if(!dryRun)
+                    {
+                        var crr = (CreateResponse)client.Execute(cr);
+                    }
+                    Log($"Created webresource {file.Item2}", ConsoleColor.Green);
                     publishList.Add(GuidUtility.Create(dnsNamespace, file.Item1));
                 }
             }
@@ -531,7 +590,10 @@ namespace XrmRegister
                                 var id = webresources.Where(x => x.Name == file).Select(x => x.Id).FirstOrDefault();
                                 if (id != null)
                                 {
-                                    client.Delete("webresource", id);
+                                    if (!dryRun)
+                                    {
+                                        client.Delete("webresource", id);
+                                    }
                                     Log($"Deleted webresource {file}");
                                 }
                             }
@@ -544,7 +606,10 @@ namespace XrmRegister
                             var id = webresources.Where(x => x.Name == file).Select(x => x.Id).FirstOrDefault();
                             if (id != null)
                             {
-                                client.Delete("webresource", id);
+                                if (!dryRun)
+                                {
+                                    client.Delete("webresource", id);
+                                }
                                 Log($"Deleted webresource {file}");
                             }
                         }
@@ -561,20 +626,19 @@ namespace XrmRegister
                     req.ParameterXml += "<webresource>{" + Id.ToString() + "}</webresource>";
                 req.ParameterXml += "</webresources></importexportxml>";
                 Log($"Publishing {publishList.Count} items");
-                var preq = (PublishXmlResponse)client.Execute(req);
+                if(!dryRun)
+                {
+                    var preq = (PublishXmlResponse)client.Execute(req);
+                }
+               
             }
 
             Log("Done!");
         }
 
-        public void RegisterAssembly(string assemblyName, string connectionString, string solutionName)
-        {
-            RegisterAssembly(assemblyName, connectionString, solutionName, Guid.Empty);
-        }
-        public void RegisterAssembly(string assemblyName, string connectionString, string solutionName, Guid @namespace)
-        {
-            pluginUnsecureConfig = PluginConfig.GetConfigList();
 
+        public void CreateFilesFromWeb(string assemblyName, string connectionString, string solutionName, bool contentCompare, string filePath, Guid @namespace)
+        {
             Log($"Begin to register");
             Log($"Assembly: {assemblyName}");
             Log($"Connection: {connectionString}");
@@ -585,14 +649,179 @@ namespace XrmRegister
                 dnsNamespace = GuidUtility.DnsNamespace;
 
             var client = Connection.CrmConnection.GetClientByConnectionString(connectionString);
+            var context = new Microsoft.Xrm.Sdk.Client.OrganizationServiceContext(client);
+
+            string prefix = null;
+            var solutionId = Utility.Utility.FoundSolution(solutionName, client, out prefix);
+
+            if (solutionId.HasValue)
+                Log($"Found solution with name {solutionName}");
+            else
+            {
+                Log("Did not find solution, aborting");
+                return;
+            }
+
+
+            var webresources = Enumerable.Repeat(new { Id = Guid.Empty, Type = new OptionSetValue(), Name = string.Empty, Content = string.Empty }, 0).ToList();
+
+            if (contentCompare)
+            {
+                webresources = (from sc in context.CreateQuery("solutioncomponent")
+                                join wr in context.CreateQuery("webresource") on (Guid)sc["objectid"] equals (Guid)wr["webresourceid"]
+                                where (int)sc["componenttype"] == 61 && (Guid)sc["solutionid"] == solutionId
+                                select new
+                                {
+                                    Id = (Guid)wr["webresourceid"],
+                                    Type = (OptionSetValue)wr["webresourcetype"],
+                                    Name = (string)wr["name"],
+                                    Content = (string)wr["content"]
+                                }).ToList();
+            }
+            else
+            {
+                webresources = (from sc in context.CreateQuery("solutioncomponent")
+                                join wr in context.CreateQuery("webresource") on (Guid)sc["objectid"] equals (Guid)wr["webresourceid"]
+                                where (int)sc["componenttype"] == 61 && (Guid)sc["solutionid"] == solutionId
+                                select new
+                                {
+                                    Id = (Guid)wr["webresourceid"],
+                                    Type = (OptionSetValue)wr["webresourcetype"],
+                                    Name = (string)wr["name"],
+                                    Content = (string)wr["content"]
+                                }).ToList();
+            }
+
+
+
+            Log($"Fetched webresources from CRM, count {webresources.Count}");
+
+            var filetypes = "*.htm|*.html|*.js|*.png|*.gif|*.jpg|*.xml|*.xap|*.xsl|*.ico|*.css|*.svg";
+            
+            var files = Utility.Utility.GetFiles($"{Directory.GetCurrentDirectory()}", filetypes, prefix, System.IO.SearchOption.AllDirectories, new Dictionary<string, string>());
+
+            Log($"Fetched webresources from Project, count {files.Length}");
+            var publishList = new List<Guid>();
+
+            foreach (var webr in webresources)
+            {
+                var existingFile = files.Where(x => x.Item2 == webr.Name).FirstOrDefault();
+                var base64String = webr.Content;
+
+                if(existingFile != null)
+                {
+                    if (contentCompare)
+                    {
+                        var xmlbytes = Utility.Utility.GetBytesFromFile(existingFile.Item1);
+                        var content = Convert.ToBase64String(xmlbytes);
+                        if(webr.Content == content)
+                        {
+                            Log($"Skipping webresource {webr.Name}");
+                            continue;
+                        }
+
+                        var relativeDirectory = existingFile.Item2.Replace("/", "\\");
+                        if (relativeDirectory.Contains("\\"))
+                            relativeDirectory = relativeDirectory.Substring(prefix.Length + 1);
+
+                        Log($"Writing file to {filePath}{relativeDirectory}");
+
+
+                        var filepath = $"{filePath}{relativeDirectory}";
+
+
+                        System.IO.FileInfo file = new System.IO.FileInfo(filepath);
+                        file.Directory.Create();
+
+                        Log($"Writing file to {filepath}");
+                        File.WriteAllBytes($"{filepath}", Convert.FromBase64String(webr.Content));
+
+                        //Compare if nescarry
+                    }
+                }
+                else
+                {
+                    var relativeDirectory = webr.Name.Replace("/", "\\");
+                    if (relativeDirectory.Contains("\\"))
+                        relativeDirectory = relativeDirectory.Substring(prefix.Length + 1);
+
+                    var filepath = $"{filePath}{relativeDirectory}";
+
+                    System.IO.FileInfo file = new System.IO.FileInfo(filepath);
+                    file.Directory.Create();
+
+                    Log($"Writing file to {filepath}");
+                    File.WriteAllBytes($"{filepath}", Convert.FromBase64String(webr.Content));
+                }
+
+                
+            }
+            Log("Done!");
+        }
+
+        public void RegisterAssembly(string assemblyName, string connectionString, string solutionName, string packageName = null)
+        {
+            RegisterAssembly(assemblyName, connectionString, solutionName, packageName, Guid.Empty);
+        }
+        public void RegisterAssembly(string assemblyName, string connectionString, string solutionName, string packageName, Guid @namespace)
+        {
+            pluginUnsecureConfig = PluginConfig.GetConfigList();
+
+            var ispackage = !string.IsNullOrEmpty(packageName);
+
+            Log($"Begin to register");
+            Log($"Assembly: {assemblyName}");
+            Log($"Connection: {connectionString}");
+            Log($"Solution: {solutionName}");
+
+            var dnsNamespace = @namespace;
+            if (dnsNamespace == Guid.Empty)
+                dnsNamespace = GuidUtility.DnsNamespace;
+
+            var client = Connection.CrmConnection.GetClientByConnectionString2(connectionString);
+
             var xrmMetaData = new XrmMetaData(client);
 
-            var solutionId = Utility.Utility.FoundSolution(solutionName, client);
+
+            var solutionPrefix = string.Empty;
+            var solutionId = Utility.Utility.FoundSolution(solutionName, client, out solutionPrefix);
 
             if (solutionId.HasValue)
                 Log($"Found solution with name {solutionName}");
             else
                 Log("Did not find solution, using default solution");
+
+            var packageFriendlyName = "";
+            var packageVersion = "";
+
+
+            if (ispackage)
+            {
+                var nupkg_regex = new Regex("^(.*?)\\.((?:\\.?[0-9]+){3,}(?:[-a-z]+)?)\\.nupkg$");
+
+                var nupkg_macthes = nupkg_regex.Match(packageName);
+                if (nupkg_macthes.Groups.Count == 3)
+                {
+                    packageFriendlyName = nupkg_macthes.Groups[1].Value;
+                    packageVersion = nupkg_macthes.Groups[2].Value;
+
+                    Log($"Friendly package name: {packageFriendlyName}");
+                    Log($"Pacakge version: {packageVersion}");
+                }
+                else
+                {
+                    throw new Exception("Could not determine package friendlyname or/and version");
+                }
+
+                Log($"Deploy is of type package, extracting assembly ({assemblyName}) from nupkg ({packageName})");
+
+                using (var packageArchive = System.IO.Compression.ZipFile.OpenRead(packageName))
+                {
+                    var file = packageArchive.Entries.Where(x => x.Name == assemblyName).FirstOrDefault();
+                    file.ExtractToFile(assemblyName, true);
+                }
+            }
+
 
             var ass = Assembly.LoadFrom(assemblyName);
             Version ver = ass.GetName().Version;
@@ -607,10 +836,12 @@ namespace XrmRegister
 
             XrmInstanceConfiguration instanseConfig = null;
 
-            if (assemblyConfig.AssemblyConfig.XrmAssemblyType == XrmAssemblyType.Plugin)
-                instanseConfig = XrmInstanceConfiguration.GetPluginTypesHiearki(shortAssemblyName, client);
+            if (assemblyConfig.AssemblyConfig.XrmAssemblyType == XrmAssemblyType.Plugin || assemblyConfig.AssemblyConfig.XrmAssemblyType == XrmAssemblyType.Package)
+                instanseConfig = XrmInstanceConfiguration.GetPluginTypesHiearki(shortAssemblyName, client, solutionPrefix, packageFriendlyName);
             else if (assemblyConfig.AssemblyConfig.XrmAssemblyType == XrmAssemblyType.Workflow)
                 instanseConfig = XrmInstanceConfiguration.GetWorkflowTypes(shortAssemblyName, client);
+            else if (assemblyConfig.AssemblyConfig.XrmAssemblyType == XrmAssemblyType.Webhook)
+                instanseConfig = XrmInstanceConfiguration.GetWebHookTypesHiearki(shortAssemblyName, client);
 
             if (instanseConfig.AssemblyRef != null)
                 Log("Found assembly in CRM");
@@ -730,7 +961,7 @@ namespace XrmRegister
                 }
                 Log("Done");
             }
-            else if (assemblyConfig.AssemblyConfig.XrmAssemblyType == XrmAssemblyType.Plugin)
+            else if (assemblyConfig.AssemblyConfig.XrmAssemblyType == XrmAssemblyType.Plugin || assemblyConfig.AssemblyConfig.XrmAssemblyType == XrmAssemblyType.Package)
             {
                 //Delete Plugins/Steps/Images that no longer exist, beacuse can't update assembly if plugins have been removed
                 //Remove images on existing steps
@@ -805,58 +1036,141 @@ namespace XrmRegister
 
                 Log("Cleanup Done");
                 Log("*");
-
-                //Register Assembly
                 var pa = new Entity("pluginassembly");
 
-                if (assemblyConfig.AssemblyConfig.SourceType == SourceType.Database)
-                {
-                    FileStream fs = new FileStream(assemblyName,
-                                       FileMode.Open,
-                                       FileAccess.Read);
-                    byte[] filebytes = new byte[fs.Length];
-                    fs.Read(filebytes, 0, Convert.ToInt32(fs.Length));
-                    string encodedData = Convert.ToBase64String(filebytes);
-                    pa.Attributes.Add("content", encodedData);
-                }
-                else if (assemblyConfig.AssemblyConfig.SourceType == SourceType.Disk)
-                {
-                    throw new NotImplementedException("Disk!");
-                }
-                else
-                {
-                    throw new Exception("No sourcetype defined!");
-                }
+                //var scd = client.RetrieveMultiple(new QueryExpression("solutioncomponentdefinition")
+                //{
+                //    NoLock = true,
+                //    ColumnSet = new ColumnSet("solutioncomponenttype"),
+                //    Criteria = new FilterExpression
+                //    {
+                //        Conditions =
+                //                {
+                //                    new ConditionExpression("primaryentityname", ConditionOperator.Equal, "pluginpackage")
+                //                }
+                //    }
+                //}).Entities.FirstOrDefault();
 
-                pa.Attributes.Add("sourcetype", new OptionSetValue((int)assemblyConfig.AssemblyConfig.SourceType));
-                pa.Attributes.Add("isolationmode", new OptionSetValue((int)assemblyConfig.AssemblyConfig.IsolationMode));
-                pa.Attributes.Add("version", ver.ToString());
-                pa.Attributes.Add("name", shortAssemblyName);
 
-                if (instanseConfig.AssemblyRef == null)
+                if (!ispackage)
                 {
-                    Log("Creating assembly: " + assemblyName);
-                    pa.Id = GuidUtility.Create(dnsNamespace, assemblyName);
-                    pa.Id = client.Create(pa);
-                    instanseConfig.AssemblyRef = pa.ToEntityReference();
-                }
-                else
-                {
-                    Log("Updating assembly: " + assemblyName);
-                    pa.Id = instanseConfig.AssemblyRef.Id;
-                    client.Update(pa);
-                }
-
-                if (solutionId.HasValue)
-                {
-                    AddSolutionComponentRequest addReq1 = new AddSolutionComponentRequest()
+                    //Register Assembly
+                    if (assemblyConfig.AssemblyConfig.SourceType == SourceType.Database)
                     {
-                        ComponentType = 91,
-                        ComponentId = instanseConfig.AssemblyRef.Id,
-                        SolutionUniqueName = solutionName
-                    };
-                    Log("Add assembly to solution: " + solutionName);
-                    var result = client.Execute(addReq1);
+                        FileStream fs = new FileStream(assemblyName,
+                                           FileMode.Open,
+                                           FileAccess.Read);
+                        byte[] filebytes = new byte[fs.Length];
+                        fs.Read(filebytes, 0, Convert.ToInt32(fs.Length));
+                        string encodedData = Convert.ToBase64String(filebytes);
+                        pa.Attributes.Add("content", encodedData);
+                    }
+                    else if (assemblyConfig.AssemblyConfig.SourceType == SourceType.Disk)
+                    {
+                        throw new NotImplementedException("Disk!");
+                    }
+                    else
+                    {
+                        throw new Exception("No sourcetype defined!");
+                    }
+
+                    pa.Attributes.Add("sourcetype", new OptionSetValue((int)assemblyConfig.AssemblyConfig.SourceType));
+                    pa.Attributes.Add("isolationmode", new OptionSetValue((int)assemblyConfig.AssemblyConfig.IsolationMode));
+                    pa.Attributes.Add("version", ver.ToString());
+                    pa.Attributes.Add("name", shortAssemblyName);
+
+                    if (instanseConfig.AssemblyRef == null)
+                    {
+                        Log("Creating assembly: " + assemblyName);
+                        pa.Id = GuidUtility.Create(dnsNamespace, assemblyName);
+                        pa.Id = client.Create(pa);
+                        instanseConfig.AssemblyRef = pa.ToEntityReference();
+                    }
+                    else
+                    {
+                        Log("Updating assembly: " + assemblyName);
+                        pa.Id = instanseConfig.AssemblyRef.Id;
+                        client.Update(pa);
+                    }
+
+                    if (solutionId.HasValue)
+                    {
+                        AddSolutionComponentRequest addReq1 = new AddSolutionComponentRequest()
+                        {
+                            ComponentType = 91,
+                            ComponentId = instanseConfig.AssemblyRef.Id,
+                            SolutionUniqueName = solutionName
+                        };
+                        Log("Add assembly to solution: " + solutionName);
+                        var result = client.Execute(addReq1);
+                    }
+                }
+                else
+                {
+                    var package = new Entity("pluginpackage");
+
+                    if (assemblyConfig.AssemblyConfig.SourceType == SourceType.Database)
+                    {
+                        FileStream fs = new FileStream($"{packageName}",
+                                           FileMode.Open,
+                                           FileAccess.Read);
+                        byte[] filebytes = new byte[fs.Length];
+                        fs.Read(filebytes, 0, Convert.ToInt32(fs.Length));
+                        string encodedData = Convert.ToBase64String(filebytes);
+                        package.Attributes.Add("content", encodedData);
+                    }
+                    else if (assemblyConfig.AssemblyConfig.SourceType == SourceType.Disk)
+                    {
+                        throw new NotImplementedException("Disk!");
+                    }
+                    else
+                    {
+                        throw new Exception("No sourcetype defined!");
+                    }
+                    if (instanseConfig.PackageRef == null)
+                    {
+                        package.Attributes.Add("name", $"{solutionPrefix}_{packageFriendlyName}");
+                        package.Attributes.Add("version", packageVersion);
+
+                        Log("Creating package: " + packageFriendlyName);
+                        package.Id = GuidUtility.Create(dnsNamespace, packageName);
+                        package.Id = client.Create(package);
+
+                    }
+                    else
+                    {
+                        Log("Updating package: " + packageFriendlyName);
+                        package.Id = instanseConfig.PackageRef.Id;
+                        client.Update(package);
+                    }
+                    //refresh instance info, as the package registration has created/updated all the plugintypes
+                    instanseConfig = XrmInstanceConfiguration.GetPluginTypesHiearki(shortAssemblyName, client);
+                    instanseConfig.PackageRef = package.ToEntityReference();
+
+                    if (solutionId.HasValue)
+                    {
+                        AddSolutionComponentRequest addReq1 = new AddSolutionComponentRequest()
+                        {
+                            ComponentType = 10030,
+                            ComponentId = package.Id,
+                            SolutionUniqueName = solutionName
+                        };
+                        Log("Add package to solution: " + solutionName);
+                        var result = client.Execute(addReq1);
+                    }
+
+                    //if (solutionId.HasValue)
+                    //{
+                    //    AddSolutionComponentRequest addReq1 = new AddSolutionComponentRequest()
+                    //    {
+                    //        ComponentType = 91,
+                    //        ComponentId = instanseConfig.AssemblyRef.Id,
+                    //        SolutionUniqueName = solutionName
+                    //    };
+                    //    Log("Add assembly to solution: " + solutionName);
+                    //    var result = client.Execute(addReq1);
+                    //}
+
                 }
 
 
@@ -1055,6 +1369,269 @@ namespace XrmRegister
                 }
                 Log("Done!");
             }
+            else if (assemblyConfig.AssemblyConfig.XrmAssemblyType == XrmAssemblyType.Webhook)
+            {
+                //Delete Plugins/Steps/Images that no longer exist, beacuse can't update assembly if plugins have been removed
+                //Remove images on existing steps
+                //if (instanseConfig.AssemblyRef != null)
+                 Log("Removing missing Plugins/Steps/Images from Webhook");
+
+                var assemblyConfigImages = assemblyConfig.GetWebHookImages();
+                var instanceConfigImages = instanseConfig.GetWebhookImages();
+
+                var toRemoveImages = (from i in instanceConfigImages
+                                      join a in assemblyConfigImages on
+                                      new { Id1 = i.Name, Id2 = i.XrmStepContainerName, Id3 = i.XrmPluginTypeName }
+                                      equals
+                                      new { Id1 = a.Name, Id2 = a.PluginEventName, Id3 = a.TypeName }
+                                      into _a
+                                      from a in _a.DefaultIfEmpty(null)
+                                      where a == null
+                                      select i).ToList();
+
+
+                //Removed steps on existing pluginstypes
+                var assemblyConfigSteps = assemblyConfig.GetWebHookSteps();
+                var instanceConfigSteps = instanseConfig.GetWebhookSteps();
+
+                var toRemoveSteps = (from i in instanceConfigSteps
+                                     join a in assemblyConfigSteps on
+                                      new { Id1 = i.Name, Id3 = i.XrmPluginTypeName }
+                                      equals
+                                      new { Id1 = a.Name, Id3 = a.TypeName }
+                                      into _a
+                                     from a in _a.DefaultIfEmpty(null)
+                                     where a == null
+                                     select i).ToList();
+
+
+                var toRemoveWebhookTypes = (from i in instanseConfig.WebHookTypes
+                                           join a in assemblyConfig.WebHookTypes on
+                                            new { Id1 = i.Name }
+                                            equals
+                                            new { Id1 = a.TypeName }
+                                            into _a
+                                           from a in _a.DefaultIfEmpty(null)
+                                           where a == null
+                                           select i).ToList();
+
+
+                Log("Removing missing images");
+                foreach (var toRemoveImage in toRemoveImages)
+                {
+                    client.Delete("sdkmessageprocessingstepimage", toRemoveImage.Id);
+                    Log($"Removed image {toRemoveImage.Name} on step {toRemoveImage.XrmStepContainerName} on plugintype {toRemoveImage.XrmPluginTypeName}");
+                }
+
+                Log("Removing missing steps");
+                foreach (var toRemoveStep in toRemoveSteps)
+                {
+                    client.Delete("sdkmessageprocessingstep", toRemoveStep.Id);
+                    Log($"Removed step {toRemoveStep.Name} on plugintype {toRemoveStep.XrmPluginTypeName}");
+                    if (toRemoveStep.SecureConfigId.HasValue)
+                    {
+                        client.Delete("sdkmessageprocessingstepsecureconfig", toRemoveStep.SecureConfigId.Value);
+                        Log($"Removed secure config for step {toRemoveStep.Name} on plugintype {toRemoveStep.XrmPluginTypeName}");
+                    }
+                }
+
+                Log("Removing missing webhooks");
+                foreach (var toRemoveWebhookType in toRemoveWebhookTypes)
+                {
+                    client.Delete("serviceendpoint", toRemoveWebhookType.Id);
+                    Log($"Removed webhooks {toRemoveWebhookType.Name}");
+                }
+
+                Log("Cleanup Done");
+                Log("*");
+
+                foreach (var webHookType in assemblyConfig.WebHookTypes)
+                {
+                    var existinWebHookTypeContainer = instanseConfig.WebHookTypes.Where(x => x.Name == webHookType.TypeName).FirstOrDefault(); // existingPlugintypes.Where(x => x.Name == typename).FirstOrDefault();
+
+                    var sendpoint = new Entity("serviceendpoint");
+                    sendpoint.Attributes.Add("name", webHookType.TypeName);
+                    //ptype.Attributes.Add("pluginassemblyid", pa.ToEntityReference());
+                    sendpoint.Attributes.Add("contract", new OptionSetValue(8));
+                    sendpoint.Attributes.Add("connectionmode", new OptionSetValue(1));
+                    //sendpoint.Attributes.Add("authvalue", "");
+                    sendpoint.Attributes.Add("authtype", new OptionSetValue(webHookType.AuthType));
+                    sendpoint.Attributes.Add("url", webHookType.Url); //app.config replacement
+
+                    var authvalue = "";
+
+                    if (webHookType.AuthValues.Count > 0)
+                        authvalue = GenerateKeyValueXml(webHookType.AuthValues);
+                    else
+                        authvalue = webHookType.WebhookKeyValue;
+
+                   sendpoint.Attributes.Add("authvalue", authvalue);
+
+                    if (existinWebHookTypeContainer == null)
+                    {
+                        Log($"Creating webhook {sendpoint.GetAttributeValue<string>("name")}");
+                        sendpoint.Id = GuidUtility.Create(dnsNamespace, sendpoint.GetAttributeValue<string>("name"));
+                       // ptype.Attributes.Add("friendlyname", ptype.Id.ToString());
+                        sendpoint.Id = client.Create(sendpoint);
+                    }
+                    else
+                    {
+                        Log($"Updating webhook { sendpoint.GetAttributeValue<string>("name")}");
+                        sendpoint.Id = existinWebHookTypeContainer.Id;
+
+                        client.Update(sendpoint);
+                        //ptype.Attributes.Add("friendlyname", ptype.Id.ToString());
+                    }
+
+                    if (solutionId.HasValue)
+                    {
+                        AddSolutionComponentRequest addReq1 = new AddSolutionComponentRequest()
+                        {
+                            ComponentType = 95,
+                            ComponentId = sendpoint.Id,
+                            SolutionUniqueName = solutionName
+                        };
+                        //Log("Adding step to solution: " + solutionName);
+                        var result = client.Execute(addReq1);
+                    }
+
+
+                    foreach (var stp in webHookType.Steps)
+                    {
+                        var overrideUpdateImages = false;
+
+                        var step = new Entity("sdkmessageprocessingstep");
+                        step.Attributes.Add("asyncautodelete", false);
+                        step.Attributes.Add("stage", new Microsoft.Xrm.Sdk.OptionSetValue((int)stp.Stage));
+                        step.Attributes.Add("mode", new OptionSetValue((int)stp.StepMode));
+                        step.Attributes.Add("rank", stp.Rank);
+                        step.Attributes.Add("name", stp.Name);
+                        step.Attributes.Add("description", "");
+                        step.Attributes.Add("supporteddeployment", new OptionSetValue(0));  //new OptionSetValue((int)stp.SupportedDeployment);
+                        step.Attributes.Add("filteringattributes", null);
+
+                        if (stp.FilteringAttributes != null && stp.FilteringAttributes.Length != 0 && stp.MessageName == "Update")
+                        {
+                            if (stp.FilteredAttributeMode == AttributeMode.Include)
+                                step["filteringattributes"] = string.Join(",", stp.FilteringAttributes.Select(x => x.ToLower()));
+                            else
+                            {
+                                var entityAttributes = xrmMetaData.GetFilteringAttributeMetaDataForEntitiy(stp.EntityName);
+                                step["filteringattributes"] = string.Join(",", entityAttributes.Except(stp.FilteringAttributes.Select(x => x.ToLower())));
+                            }
+                        }
+
+                        var existingStepContainer = instanceConfigSteps.Where(x => x.Name == stp.Name && x.XrmPluginTypeName == stp.TypeName).FirstOrDefault();
+                        var _StepId = Guid.Empty;
+
+                        if (Utility.Utility.Compare(stp, existingStepContainer, step.GetAttributeValue<string>("filteringattributes")))
+                        {
+                            Log($"Skipping step {step.GetAttributeValue<string>("name")} ({sendpoint.GetAttributeValue<string>("name")})");
+                            _StepId = existingStepContainer.Id;
+                        }
+                        else
+                        {
+                            if (existingStepContainer != null)
+                            {
+                                if (stp.MessageName == "Create" && existingStepContainer.Message != "Create")
+                                    overrideUpdateImages = true;
+                                if (stp.MessageName != "Create" && existingStepContainer.Message == "Create")
+                                    overrideUpdateImages = true;
+                            }
+                          
+                           
+                            step.Attributes.Add("sdkmessageid", Utility.Utility.GetMessageId(stp.MessageName, client));
+                            step.Attributes.Add("sdkmessagefilterid", Utility.Utility.GetSdkMessageFilterId(stp.EntityName, step.GetAttributeValue<EntityReference>("sdkmessageid").Id, client));
+                            step.Attributes.Add("eventhandler", sendpoint.ToEntityReference());
+
+
+                            if (existingStepContainer == null)
+                            {
+                                Log($"Creating step {step.GetAttributeValue<string>("name")} ({sendpoint.GetAttributeValue<string>("name")})");
+                                _StepId = step.Id = GuidUtility.Create(dnsNamespace, sendpoint.GetAttributeValue<string>("typename") + step.GetAttributeValue<string>("name"));
+                                step.Id = client.Create(step);
+                            }
+                            else
+                            {
+                                Log($"Updating step {step.GetAttributeValue<string>("name")} ({sendpoint.GetAttributeValue<string>("name")})");
+                                _StepId = step.Id = existingStepContainer.Id;
+                                client.Update(step);
+                            }
+
+                            if (solutionId.HasValue)
+                            {
+                                AddSolutionComponentRequest addReq1 = new AddSolutionComponentRequest()
+                                {
+                                    ComponentType = 92,
+                                    ComponentId = step.Id,
+                                    SolutionUniqueName = solutionName
+                                };
+                                //Log("Adding step to solution: " + solutionName);
+                                var result = client.Execute(addReq1);
+                            }
+                        }
+
+                        foreach (var _image in stp.Images)
+                        {
+                            var image = new Entity("sdkmessageprocessingstepimage");
+
+                            image.Attributes.Add("imagetype", new OptionSetValue((int)_image.ImageType));
+                            image.Attributes.Add("name", _image.Name);
+                            image.Attributes.Add("entityalias", _image.Name);
+                            if (stp.MessageName == "Update" || stp.MessageName == "Delete")
+                                image.Attributes.Add("messagepropertyname", "Target");
+                            else if (stp.MessageName == "Create")
+                                image.Attributes.Add("messagepropertyname", "Id");
+                            image.Attributes.Add("sdkmessageprocessingstepid", new EntityReference("sdkmessageprocessingstep", _StepId)); // step.ToEntityReference();
+
+                            if (_image.Attributes != null && _image.Attributes.Length != 0)
+                            {
+                                if (_image.AttributeMode == AttributeMode.Include)
+                                    image.Attributes.Add("attributes", string.Join(",", _image.Attributes.Select(x => x.ToLower())));
+                                else
+                                {
+                                    var entityAttributes = xrmMetaData.GetFilteringAttributeMetaDataForEntitiy(stp.EntityName);
+                                    image.Attributes.Add("attributes", string.Join(",", entityAttributes.Except(stp.FilteringAttributes.Select(x => x.ToLower()))));
+                                }
+                            }
+                            else
+                            {
+                                image.Attributes.Add("attributes", null);
+                            }
+
+
+                            var existingImageContainer = instanceConfigImages.Where(x =>
+                            x.Name == _image.Name &&
+                            x.XrmPluginTypeName == _image.TypeName &&
+                            x.XrmStepContainerName == _image.PluginEventName
+                            ).FirstOrDefault();
+
+                            if (!overrideUpdateImages && Utility.Utility.Compare(_image, existingImageContainer, image.GetAttributeValue<string>("attributes")))
+                            {
+                                Log($"Skipping image {image.GetAttributeValue<string>("name")} ({stp.Name}|{stp.TypeName})");
+                            }
+                            else
+                            {
+                                if (existingImageContainer == null)
+                                {
+                                    Log($"Creating image {image.GetAttributeValue<string>("name")} ({stp.Name}|{stp.TypeName})");
+                                    image.Id = GuidUtility.Create(dnsNamespace, image.GetAttributeValue<string>("name") + stp.Name + sendpoint.GetAttributeValue<string>("typename"));
+                                    image.Id = client.Create(image);
+                                }
+                                else
+                                {
+                                    Log($"Updating image {image.GetAttributeValue<string>("name")} ({stp.Name}|{stp.TypeName})");
+                                    image.Id = existingImageContainer.Id;
+                                    client.Update(image);
+                                }
+                            }
+
+                        }
+                    }
+                }
+                Log("Done!");
+            }
+
         }
 
         public void GenerateMessagesStruct(string connectionString, string filePath)
@@ -1063,6 +1640,23 @@ namespace XrmRegister
             var xrmMetaData = new XrmMetaData(client);
 
             xrmMetaData.GenerateMessagesStruct(filePath);
+        }
+
+        private string GenerateKeyValueXml(Collection<AuthValue> values)
+        {
+            var settingStrings = string.Empty;
+
+            foreach (var keyvalue in values)
+            {
+                var key = keyvalue.Key; //row.Cells[0].Value?.ToString();
+                var value = keyvalue.Value; // row.Cells[1].Value?.ToString();
+
+                if (key == null && value == null) { continue; }
+
+                settingStrings += $"<setting name='{key}' value='{value}' />";
+            }
+
+            return settingStrings != string.Empty ? $@"<settings>{settingStrings}</settings>" : string.Empty;
         }
     }
 }

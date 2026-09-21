@@ -3,6 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.ServiceModel.Web;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -14,7 +17,12 @@ namespace XrmRegister.Utility
 
         public Collection<XrmWorkflowTypeContainer> WorkflowTypes { get; set; } = new Collection<XrmWorkflowTypeContainer>();
 
+        public Collection<XrmWebHookContainer> WebHookTypes { get; set; } = new Collection<XrmWebHookContainer>();
+
         public EntityReference AssemblyRef { get; set; }
+
+        public EntityReference PackageRef { get; set; }
+
         public Collection<XrmImageContainer> GetImages()
         {
             var result = new Collection<XrmImageContainer>();
@@ -34,14 +42,48 @@ namespace XrmRegister.Utility
             return result;
         }
 
-
-        public static XrmInstanceConfiguration GetPluginTypesHiearki(string assemblyName, IOrganizationService service)
+        public Collection<XrmImageContainer> GetWebhookImages()
         {
+            var result = new Collection<XrmImageContainer>();
+            foreach (var webhooktype in this.WebHookTypes)
+                foreach (var step in webhooktype.Steps)
+                    foreach (var image in step.Images)
+                        result.Add(image);
+            return result;
+        }
+
+        public Collection<XrmStepContainer> GetWebhookSteps()
+        {
+            var result = new Collection<XrmStepContainer>();
+            foreach (var webhooktype in this.WebHookTypes)
+                foreach (var step in webhooktype.Steps)
+                    result.Add(step);
+            return result;
+        }
+
+
+        public static XrmInstanceConfiguration GetPluginTypesHiearki(string assemblyName, IOrganizationService service, string solutionPrefix = null, string packageName = null)
+        {
+            var result = new XrmInstanceConfiguration();
+
+            if (!string.IsNullOrWhiteSpace(packageName))
+                result.PackageRef = GetPackage($"{solutionPrefix}_{packageName}", service);
+
             var ass = GetAssembly(assemblyName, service);
             if (ass == null)
-                return new XrmInstanceConfiguration();
+                return result;
 
-            return GetPluginTypesHiearki(ass, service);
+            var assConfig = GetPluginTypesHiearki(ass, service);
+            assConfig.PackageRef = result.PackageRef;
+
+            return assConfig;
+        }
+
+        public static XrmInstanceConfiguration GetWebHookTypesHiearki(string assemblyName, IOrganizationService service)
+        {
+           //
+
+            return GetWebHookTypesHiearki2(assemblyName, service);
         }
 
         public static XrmInstanceConfiguration GetWorkflowTypes(string assemblyName, IOrganizationService service)
@@ -91,6 +133,36 @@ namespace XrmRegister.Utility
 
             return assRef;
         }
+
+        public static EntityReference GetPackage(string packageName, IOrganizationService service)
+        {
+            //tempfix navn
+            //packageName = $"tek_{packageName}";
+
+            var context = new Microsoft.Xrm.Sdk.Client.OrganizationServiceContext(service);
+            var package = (from a in context.CreateQuery("pluginpackage") where (string)a["name"] == packageName select a).FirstOrDefault();
+
+            EntityReference packRef = null;
+
+            if (package != null)
+                packRef = package.ToEntityReference();
+
+            return packRef;
+        }
+
+        public static EntityReference GetServiceEndpoint(string assemblyName, IOrganizationService service)
+        {
+            var context = new Microsoft.Xrm.Sdk.Client.OrganizationServiceContext(service);
+            var se = (from a in context.CreateQuery("serviceendpoint") where (string)a["name"] == assemblyName select a).FirstOrDefault();
+
+            EntityReference seRef = null;
+
+            if (se != null)
+                seRef = se.ToEntityReference();
+
+            return seRef;
+        }
+
         public static XrmInstanceConfiguration GetPluginTypesHiearki(EntityReference assemblyRef, IOrganizationService service)
         {
             var assemblyId = assemblyRef.Id;
@@ -185,6 +257,93 @@ namespace XrmRegister.Utility
 
             return new XrmInstanceConfiguration { PluginTypes = ptdic, AssemblyRef = assemblyRef };
         }
+        public static XrmInstanceConfiguration GetWebHookTypesHiearki2(string assembliyName, IOrganizationService service)
+        {
+            var context = new Microsoft.Xrm.Sdk.Client.OrganizationServiceContext(service);
+            var webhook = (from se in context.CreateQuery("serviceendpoint")
+                              where ((string)se["name"]).StartsWith(assembliyName)
+                              select se).ToList();
+
+          
+            var steps1 = (from spt in context.CreateQuery("sdkmessageprocessingstep")
+                          join se in context.CreateQuery("serviceendpoint") on (Guid)spt["eventhandler"] equals (Guid)se["serviceendpointid"]
+                          where ((string)se["name"]).StartsWith(assembliyName) && (EntityReference)spt["sdkmessagefilterid"] == null
+                          select new { Step = spt, EntityName = string.Empty }).ToList();
+
+            var steps2 = (from spt in context.CreateQuery("sdkmessageprocessingstep")
+                          join m in context.CreateQuery("sdkmessagefilter") on (Guid)spt["sdkmessagefilterid"] equals (Guid)m["sdkmessagefilterid"]
+                          join se in context.CreateQuery("serviceendpoint") on (Guid)spt["eventhandler"] equals (Guid)se["serviceendpointid"]
+                          where ((string)se["name"]).StartsWith(assembliyName)
+                          select new { Step = spt, EntityName = m.GetAttributeValue<string>("primaryobjecttypecode") }).ToList();
+
+            var steps = steps1.Union(steps2).ToList();
+
+
+
+            var images = (from img in context.CreateQuery("sdkmessageprocessingstepimage")
+                          join spt in context.CreateQuery("sdkmessageprocessingstep") on (Guid)img["sdkmessageprocessingstepid"] equals (Guid)spt["sdkmessageprocessingstepid"]
+                          join se in context.CreateQuery("serviceendpoint") on (Guid)spt["eventhandler"] equals (Guid)se["serviceendpointid"]
+                          where ((string)se["name"]).StartsWith(assembliyName)
+                          select img).ToList();
+
+            //var secureConfigs = (from spt in context.CreateQuery("sdkmessageprocessingstep")
+            //                    join pt in context.CreateQuery("plugintype") on (Guid)spt["plugintypeid"] equals (Guid)pt["plugintypeid"]
+            //                    join sc in context.CreateQuery("sdkmessageprocessingstepsecureconfig") on (Guid)spt["sdkmessageprocessingstepsecureconfigid"] equals (Guid)sc["sdkmessageprocessingstepsecureconfigid"]
+            //                    where (Guid)pt["pluginassemblyid"] == assemblyId
+            //                    select new
+            //                    {
+            //                        Step = new {
+            //                            Id = (Guid)spt["sdkmessageprocessingstepid"],
+            //                            SecureConfig = (string)sc["secureconfig"],
+            //                            SecureConfigId = (Guid)sc["sdkmessageprocessingstepsecureconfigid"]
+            //                        }
+            //                    }).ToList();
+
+
+            var ptdic = new Collection<XrmWebHookContainer>();
+
+            foreach (var wh in webhook)
+            {
+                var pluginTypeContainer = new XrmWebHookContainer { Name = wh.GetAttributeValue<string>("name"), Id = wh.Id, Steps = new Collection<XrmStepContainer>() }; // new XrmPluginTypeContainer { Name = pt.GetAttributeValue<string>("typename"), Id = pt.Id, Steps = new Collection<XrmStepContainer>() };
+
+                var pluginsteps = steps.Where(x => x.Step.GetAttributeValue<EntityReference>("eventhandler").Id == wh.Id).ToList();
+                foreach (var step in pluginsteps)
+                {
+                    var stepContainer = new XrmStepContainer {
+                        Name = step.Step.GetAttributeValue<string>("name"),
+                        Id = step.Step.Id, Images = new Collection<XrmImageContainer>(),
+                        XrmPluginTypeName = wh.GetAttributeValue<string>("name"),
+                        Entity = step.EntityName,
+                        Message = step.Step.GetAttributeValue<EntityReference>("sdkmessageid").Name,
+                        FilteringAttributes = step.Step.GetAttributeValue<string>("filteringattributes"),
+                        Rank = step.Step.GetAttributeValue<int?>("rank").Value,
+                        Mode = step.Step.GetAttributeValue<OptionSetValue>("mode").Value,
+                        Stage = step.Step.GetAttributeValue<OptionSetValue>("stage").Value,
+                    };
+
+
+                    var stepimages = images.Where(x => x.GetAttributeValue<EntityReference>("sdkmessageprocessingstepid").Id == step.Step.Id).ToList();
+                    foreach (var image in stepimages)
+                    {
+                        var imageContainer = new XrmImageContainer {
+                            Id = image.Id,
+                            Name = image.GetAttributeValue<string>("name"),
+                            Type = image.GetAttributeValue<OptionSetValue>("imagetype").Value,
+                            Attributes = image.GetAttributeValue<string>("attributes"),
+                            XrmPluginTypeName = wh.GetAttributeValue<string>("name"),
+                            XrmStepContainerName = step.Step.GetAttributeValue<string>("name"),
+                            
+                        };
+                        stepContainer.Images.Add(imageContainer);
+
+                    }
+                    pluginTypeContainer.Steps.Add(stepContainer);
+                }
+                ptdic.Add(pluginTypeContainer);
+            }
+
+            return new XrmInstanceConfiguration { WebHookTypes = ptdic };
+        }
     }
 
     public class XrmWorkflowTypeContainer
@@ -193,6 +352,13 @@ namespace XrmRegister.Utility
         public string Name { get; set; }
         public string Group { get; set; }
         public string NameInGroup { get; set; }
+    }
+
+    public class XrmWebHookContainer
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; }
+        public Collection<XrmStepContainer> Steps { get; set; } = new Collection<XrmStepContainer>();
     }
 
     public class XrmPluginTypeContainer
